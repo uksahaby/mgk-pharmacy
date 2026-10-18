@@ -12,6 +12,7 @@ import '../../state/auth_state.dart';
 import '../../state/cart_state.dart';
 import '../../widgets/common.dart';
 import '../../widgets/product_widgets.dart';
+import '../../widgets/ui.dart';
 
 /// Live server quote for the current cart (prices, stock, delivery), refreshed when the cart changes.
 Future<Quote> fetchQuote(CartState cart, {String fulfilment = 'DELIVERY', String? state}) async =>
@@ -62,7 +63,7 @@ class _CartScreenState extends State<CartScreen> {
 
     if (cart.items.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Your cart')),
+        appBar: AppBar(title: const Text('Your Cart')),
         body: Center(
           child: EmptyState(
             icon: Icons.shopping_bag_outlined,
@@ -76,72 +77,129 @@ class _CartScreenState extends State<CartScreen> {
 
     final needsSignIn = q?.requiresRx == true && user == null;
     return Scaffold(
-      appBar: AppBar(title: const Text('Your cart')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        if (q != null)
-          CardBox(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(q.freeDelivery ? "You've unlocked free delivery" : 'Add ${naira(q.amountToFreeDeliveryKobo)} more for free delivery',
-                  style: TextStyle(fontWeight: FontWeight.w600, color: q.freeDelivery ? AppColors.care700 : AppColors.inkSoft)),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(9),
-                child: LinearProgressIndicator(
-                  value: (q.subtotalKobo / q.freeDeliveryThresholdKobo).clamp(0, 1).toDouble(),
-                  minHeight: 8,
-                  backgroundColor: AppColors.slate100,
-                  color: AppColors.care500,
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Your Cart'),
+            Text(
+              plural(cart.count, 'item'),
+              style: const TextStyle(fontSize: 12.5, color: AppColors.brand600, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(0, 4, 0, 16),
+        children: [
+          for (final item in cart.items) ...[_CartLine(item: item, line: q?.line(item.productId)), const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.line)],
+          if (q?.requiresRx == true)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: AlertBox(
+                tone: AlertTone.warning,
+                title: 'Your cart contains prescription-only medicines',
+                message:
+                    "You'll upload a prescription at checkout${user == null ? ' (sign in required)' : ''}. A pharmacist reviews it before you pay."
+                    '${q!.requiresVerification ? ' Controlled medicines also need a verified account.' : ''}',
+              ),
+            ),
+          if (q != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Panel(
+                color: q.freeDelivery ? AppColors.care50 : AppColors.brand50,
+                borderColor: q.freeDelivery ? AppColors.care100 : AppColors.brand100,
+                child: Row(
+                  children: [
+                    Icon(Icons.local_shipping_outlined, color: q.freeDelivery ? AppColors.care600 : AppColors.brand600, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            q.freeDelivery ? "You've unlocked free delivery" : 'Add ${naira(q.amountToFreeDeliveryKobo)} more for free delivery',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: q.freeDelivery ? AppColors.care700 : AppColors.brand700),
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(9),
+                            child: LinearProgressIndicator(
+                              value: (q.subtotalKobo / q.freeDeliveryThresholdKobo).clamp(0, 1).toDouble(),
+                              minHeight: 6,
+                              backgroundColor: Colors.white,
+                              color: q.freeDelivery ? AppColors.care500 : AppColors.brand600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text('Free delivery on orders over ${naira(q.freeDeliveryThresholdKobo)}', style: const TextStyle(fontSize: 11.5, color: AppColors.inkMuted)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ]),
-          ),
-        if (q?.requiresRx == true) ...[
-          const SizedBox(height: 12),
-          AlertBox(
-            tone: AlertTone.warning,
-            title: 'Your cart contains prescription-only medicines',
-            message: "You'll upload a prescription at checkout${user == null ? ' (sign in required)' : ''}. A pharmacist reviews it before you pay."
-                '${q!.requiresVerification ? ' Controlled medicines also need a verified account.' : ''}',
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Panel(
+              child: Column(
+                children: [
+                  KeyValue('Subtotal', q == null ? '…' : naira(q.subtotalKobo)),
+                  Row(
+                    children: [
+                      const Text('Delivery to ', style: TextStyle(color: AppColors.inkMuted)),
+                      DropdownButton<String>(
+                        value: _state,
+                        isDense: true,
+                        underline: const SizedBox.shrink(),
+                        items: [for (final s in nigerianStates) DropdownMenuItem(value: s, child: Text(s))],
+                        onChanged: (v) => setState(() => _state = v!),
+                      ),
+                      const Spacer(),
+                      Text(q == null ? '…' : (q.shippingKobo == 0 ? 'Free' : naira(q.shippingKobo)), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  if (q?.zone != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('${q!.zone!['etaLabel']}. Free pickup available in Kano.', style: const TextStyle(fontSize: 12, color: AppColors.inkMuted)),
+                    ),
+                  const Divider(height: 20, color: AppColors.line),
+                  KeyValue('Estimated total', q == null ? '…' : naira(q.totalKobo), bold: true),
+                ],
+              ),
+            ),
           ),
         ],
-        const SizedBox(height: 12),
-        Card(
-          child: Column(children: [
-            for (final item in cart.items) ...[
-              _CartLine(item: item, line: q?.line(item.productId)),
-              if (item != cart.items.last) const Divider(),
-            ],
-          ]),
-        ),
-        const SizedBox(height: 12),
-        CardBox(
-          child: Column(children: [
-            KeyValue('Subtotal', q == null ? '…' : naira(q.subtotalKobo)),
-            Row(children: [
-              const Text('Delivery to ', style: TextStyle(color: AppColors.inkMuted)),
-              DropdownButton<String>(
-                value: _state,
-                isDense: true,
-                underline: const SizedBox.shrink(),
-                items: [for (final s in nigerianStates) DropdownMenuItem(value: s, child: Text(s))],
-                onChanged: (v) => setState(() => _state = v!),
-              ),
-              const Spacer(),
-              Text(q == null ? '…' : (q.shippingKobo == 0 ? 'Free' : naira(q.shippingKobo)), style: const TextStyle(fontWeight: FontWeight.w600)),
-            ]),
-            if (q?.zone != null) Align(alignment: Alignment.centerLeft, child: Text('${q!.zone!['etaLabel']}. Free pickup available in Kano.', style: const TextStyle(fontSize: 12, color: AppColors.inkMuted))),
-            const Divider(height: 20),
-            KeyValue('Estimated total', q == null ? '…' : naira(q.totalKobo), bold: true),
-          ]),
-        ),
-        const SizedBox(height: 90),
-      ]),
+      ),
       bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: FilledButton(
-            onPressed: q == null || q.hasIssues ? null : () => context.push(needsSignIn ? '/login?next=/checkout' : '/checkout'),
-            child: Text(needsSignIn ? 'Sign in to checkout' : 'Continue to checkout'),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: AppColors.line)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Text('Subtotal', style: TextStyle(color: AppColors.inkMuted)),
+                  const Spacer(),
+                  Text(q == null ? '…' : naira(q.subtotalKobo), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: q == null || q.hasIssues ? null : () => context.push(needsSignIn ? '/login?next=/checkout' : '/checkout'),
+                  child: Text(needsSignIn ? 'Sign in to checkout' : 'Proceed to checkout'),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -158,27 +216,61 @@ class _CartLine extends StatelessWidget {
     final cart = context.read<CartState>();
     final price = line?.priceKobo ?? item.priceKobo;
     return Padding(
-      padding: const EdgeInsets.all(14),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: 72, child: ClipRRect(borderRadius: BorderRadius.circular(12), child: ProductArt(name: item.name, icon: item.icon, size: ArtSize.sm))),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            InkWell(onTap: () => context.push('/product/${item.slug}'), child: Text('${item.name} ${item.strength ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700))),
-            Text(item.packSize, style: const TextStyle(color: AppColors.inkMuted, fontSize: 12.5)),
-            const SizedBox(height: 4),
-            Wrap(spacing: 6, children: [RxBadge(item.rxStatus), if (line?.coldChain == true) const ColdChainBadge()]),
-            if (line?.issue != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text('${line!.issue}. Please adjust the quantity.', style: const TextStyle(color: AppColors.brand700, fontWeight: FontWeight.w600, fontSize: 12.5))),
-            const SizedBox(height: 8),
-            Row(children: [
-              QuantityStepper(small: true, value: item.quantity, max: line == null ? 50 : line!.available.clamp(1, 50), onChanged: (v) => cart.setQuantity(item.productId, v)),
-              const Spacer(),
-              IconButton(onPressed: () => cart.remove(item.productId), icon: const Icon(Icons.delete_outline, color: AppColors.inkMuted), tooltip: 'Remove ${item.name}'),
-            ]),
-          ]),
-        ),
-        Text(naira(price * item.quantity), style: const TextStyle(fontWeight: FontWeight.w700)),
-      ]),
+      padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => context.push('/product/${item.slug}'),
+            child: Container(
+              width: 84,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ProductArt(name: item.name, icon: item.icon, size: ArtSize.sm),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${item.name} ${item.strength ?? ''}'.trim(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+                Text(item.packSize, style: const TextStyle(color: AppColors.inkMuted, fontSize: 12.5)),
+                if (item.rxStatus != 'OTC' || line?.coldChain == true)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Wrap(spacing: 6, children: [RxBadge(item.rxStatus), if (line?.coldChain == true) const ColdChainBadge()]),
+                  ),
+                const SizedBox(height: 4),
+                Text(
+                  naira(price * item.quantity),
+                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.brand600, fontSize: 15),
+                ),
+                if (line?.issue != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '${line!.issue}. Please adjust the quantity.',
+                      style: const TextStyle(color: AppColors.brand700, fontWeight: FontWeight.w600, fontSize: 12.5),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                QuantityStepper(small: true, value: item.quantity, max: line == null ? 50 : line!.available.clamp(1, 50), onChanged: (v) => cart.setQuantity(item.productId, v)),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => cart.remove(item.productId),
+            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.inkMuted),
+            tooltip: 'Remove ${item.name}',
+          ),
+        ],
+      ),
     );
   }
 }

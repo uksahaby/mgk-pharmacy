@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../core/api.dart';
@@ -9,6 +10,7 @@ import '../core/models.dart';
 import '../core/theme.dart';
 import 'common.dart';
 import 'map_view.dart';
+import 'ui.dart';
 
 /// Live rider map for an order on its way. Polls the same tracking endpoint as the website every 4 seconds.
 class LiveTracking extends StatefulWidget {
@@ -67,87 +69,135 @@ class _LiveTrackingState extends State<LiveTracking> {
       if (pos != null) MapPin(PinKind.rider, LatLng((pos['lat'] as num).toDouble(), (pos['lng'] as num).toDouble()), heading: (pos['heading'] as num?)?.toDouble()),
     ];
     final rider = t?.rider;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(color: AppColors.care50, borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.delivery_dining, color: AppColors.care600),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(widget.staff ? 'Live delivery' : 'Your order is on its way', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                Text('${rider != null ? '${rider['firstName']} is bringing your order' : 'Rider assigned'}${pos != null ? ' · updated ${ago(pos['at'] as String)}' : ''}',
-                    style: const TextStyle(color: AppColors.inkMuted, fontSize: 12.5)),
-              ]),
-            ),
-            if (t?.etaMinutes != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(12)),
-                child: Column(children: [
-                  const Text('ARRIVING IN', style: TextStyle(color: Colors.white54, fontSize: 9, letterSpacing: 1)),
-                  Text('${t!.etaMinutes} min', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
-                ]),
+    final riderName = rider?['firstName'] as String?;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              MgkMap(
+                height: 240,
+                borderRadius: 0,
+                scrollFriendly: true,
+                pins: pins,
+                trail: t?.trail.map((p) => LatLng(p[0], p[1])).toList() ?? const [],
+                guide: pos != null && t?.destination != null ? [LatLng((pos['lat'] as num).toDouble(), (pos['lng'] as num).toDouble()), LatLng(t!.destination!.lat, t.destination!.lng)] : const [],
+                fitKey: t == null ? null : '${pos != null}-${t.destination != null}',
               ),
-          ]),
-        ),
-        Stack(children: [
-          MgkMap(
-            height: 320,
-            borderRadius: 0,
-            pins: pins,
-            trail: t?.trail.map((p) => LatLng(p[0], p[1])).toList() ?? const [],
-            guide: pos != null && t?.destination != null ? [LatLng((pos['lat'] as num).toDouble(), (pos['lng'] as num).toDouble()), LatLng(t!.destination!.lat, t.destination!.lng)] : const [],
-            fitKey: t == null ? null : '${pos != null}-${t.destination != null}',
+              if (t != null && t.live && pos == null)
+                const Positioned(
+                  left: 10,
+                  right: 10,
+                  bottom: 10,
+                  child: AlertBox(tone: AlertTone.warning, message: "Waiting for the rider's location. It appears as soon as they set off."),
+                ),
+              if (t?.stale == true)
+                const Positioned(
+                  left: 10,
+                  right: 10,
+                  bottom: 10,
+                  child: AlertBox(tone: AlertTone.warning, message: "The rider's phone hasn't updated for a moment (weak signal). Showing the last known position."),
+                ),
+            ],
           ),
-          if (t != null && t.live && pos == null)
-            const Positioned(left: 12, right: 12, bottom: 12, child: AlertBox(tone: AlertTone.warning, message: "Waiting for the rider's location. It appears as soon as they set off.")),
-          if (t?.stale == true)
-            const Positioned(left: 12, right: 12, bottom: 12, child: AlertBox(tone: AlertTone.warning, message: "The rider's phone hasn't updated for a moment (weak signal). Showing the last known position.")),
-        ]),
-        Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(children: [
-            if (widget.code != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: widget.staff ? AppColors.slate50 : AppColors.brand50, borderRadius: BorderRadius.circular(14)),
-                child: Row(children: [
-                  const Icon(Icons.key_outlined, color: AppColors.brand600),
+        ),
+        const SizedBox(height: 12),
+        Panel(
+          child: Column(
+            children: [
+              // Rider
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: AppColors.brand50,
+                    child: riderName == null
+                        ? const Icon(Icons.delivery_dining_rounded, color: AppColors.brand600)
+                        : Text(
+                            riderName[0],
+                            style: const TextStyle(color: AppColors.brand700, fontWeight: FontWeight.w800),
+                          ),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('Delivery code', style: TextStyle(fontSize: 12, color: AppColors.inkMuted)),
-                      Text(widget.code!.split('').join(' '), style: const TextStyle(fontFamily: 'monospace', fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: 4)),
-                      if (!widget.staff) const Text('Give it to the rider only when you have your package.', style: TextStyle(fontSize: 11.5, color: AppColors.inkMuted)),
-                    ]),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(riderName ?? 'Rider assigned', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                        Text(widget.staff ? 'Delivery rider' : 'Your delivery rider', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12.5)),
+                      ],
+                    ),
                   ),
-                ]),
+                  if (rider?['phone'] != null)
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38), padding: const EdgeInsets.symmetric(horizontal: 14)),
+                      onPressed: () => openLink('tel:${rider!['phone']}'),
+                      icon: const Icon(Icons.call_outlined, size: 18, color: AppColors.brand600),
+                      label: const Text('Call'),
+                    ),
+                ],
               ),
-            if (rider?['phone'] != null) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => openLink('tel:${rider['phone']}'),
-                  icon: const Icon(Icons.call_outlined, color: AppColors.care600),
-                  label: Text('Call ${rider!['firstName']} · ${fmtPhone(rider['phone'] as String)}'),
+              const Divider(height: 24, color: AppColors.line),
+              // Live location + arrival time, and the delivery code
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: pos != null ? AppColors.care500 : AppColors.hint),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(pos != null ? 'Live location · ${ago(pos['at'] as String)}' : 'Live location', style: const TextStyle(fontSize: 12.5, color: AppColors.inkMuted)),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t?.etaMinutes != null ? 'Arriving in ${t!.etaMinutes} min' : 'On the way',
+                          style: GoogleFonts.plusJakartaSans(color: AppColors.brand600, fontWeight: FontWeight.w800, fontSize: 19),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (widget.code != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.slate50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.line),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text('Delivery code', style: TextStyle(fontSize: 11, color: AppColors.inkMuted)),
+                          Text(widget.code!, style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 3)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              if (widget.code != null && !widget.staff)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Text('Give the code to the rider only when you have your package.', style: TextStyle(fontSize: 12, color: AppColors.inkMuted)),
                 ),
-              ),
+              if (t?.destinationSource != null && t!.destinationSource != 'PIN')
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: AlertBox(tone: AlertTone.warning, message: 'Your pin is approximate. The rider will call if they need directions.'),
+                ),
             ],
-            if (t?.destinationSource != null && t!.destinationSource != 'PIN')
-              const Padding(padding: EdgeInsets.only(top: 10), child: AlertBox(tone: AlertTone.warning, message: 'Your pin is approximate. The rider will call if they need directions.')),
-          ]),
+          ),
         ),
-      ]),
+      ],
     );
   }
 }

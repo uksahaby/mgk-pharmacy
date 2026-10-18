@@ -58,19 +58,29 @@ authRouter.post(
   }),
 );
 
+// `email` may also be a Nigerian mobile number ("0803 123 4567"); the field name is kept for existing clients.
 const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
+  email: z.string().trim().toLowerCase().min(3, "Enter your email or phone number").max(254),
   password: z.string().min(1),
 });
+
+async function findLoginUser(identifier: string) {
+  if (identifier.includes("@")) return prisma.user.findUnique({ where: { email: identifier } });
+  const parsed = phone.safeParse(identifier);
+  if (!parsed.success) return null;
+  // Phone numbers aren't unique, so only sign in when exactly one account uses it.
+  const matches = await prisma.user.findMany({ where: { phone: parsed.data }, take: 2 });
+  return matches.length === 1 ? matches[0] : null;
+}
 
 authRouter.post(
   "/login",
   authLimiter,
   ah(async (req, res) => {
-    const { email, password: pw } = loginSchema.parse(req.body);
-    const user = await prisma.user.findUnique({ where: { email } });
+    const { email: identifier, password: pw } = loginSchema.parse(req.body);
+    const user = await findLoginUser(identifier);
     const ok = user && (await bcrypt.compare(pw, user.passwordHash));
-    if (!user || !ok) throw new HttpError(401, "That email and password combination didn't match our records.");
+    if (!user || !ok) throw new HttpError(401, "Those sign-in details didn't match our records. Check your email or phone number and password.");
     if (!user.active) throw new HttpError(403, "This account has been deactivated. Please contact the pharmacy if you think this is a mistake.");
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     const token = setSession(res, user, req);

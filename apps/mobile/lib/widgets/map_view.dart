@@ -17,7 +17,7 @@ class MapPin {
 
 /// OpenStreetMap map with the same markers as the website (pharmacy, home, rider).
 class MgkMap extends StatefulWidget {
-  const MgkMap({super.key, required this.pins, this.trail = const [], this.guide = const [], this.height = 300, this.onTap, this.fitKey, this.borderRadius = 18});
+  const MgkMap({super.key, required this.pins, this.trail = const [], this.guide = const [], this.height = 300, this.onTap, this.fitKey, this.borderRadius = 18, this.scrollFriendly = false});
   final List<MapPin> pins;
   final List<LatLng> trail;
   final List<LatLng> guide;
@@ -26,6 +26,8 @@ class MgkMap extends StatefulWidget {
   /// Change to re-fit the camera to all pins.
   final String? fitKey;
   final double borderRadius;
+  /// Inside a scrolling page: one-finger drags scroll the page, not the map (pinch to zoom, tap still works).
+  final bool scrollFriendly;
 
   @override
   State<MgkMap> createState() => _MgkMapState();
@@ -68,7 +70,9 @@ class _MgkMapState extends State<MgkMap> {
               _ready = true;
               _fit();
             },
-            interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
+            interactionOptions: InteractionOptions(
+              flags: widget.scrollFriendly ? InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom : InteractiveFlag.all & ~InteractiveFlag.rotate,
+            ),
           ),
           children: [
             TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.mgkpharmacy.mgk_pharmacy'),

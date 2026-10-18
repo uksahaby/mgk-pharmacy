@@ -40,7 +40,7 @@ export function LoginForm({ next }: { next?: string }) {
       }}
     >
       {error && <Alert tone="error">{error}</Alert>}
-      <TextField label="Email address" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={fields.email} required />
+      <TextField label="Email or phone number" type="text" inputMode="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} error={fields.email} required />
       <PasswordField label="Password" autoComplete="current-password" value={password} onChange={setPassword} error={fields.password} />
       <SubmitButton pending={pending} className="btn-primary btn-lg w-full">Sign in</SubmitButton>
       <p className="text-center text-sm text-ink-muted">

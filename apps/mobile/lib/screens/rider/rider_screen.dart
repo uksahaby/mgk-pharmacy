@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -14,6 +15,7 @@ import '../../core/theme.dart';
 import '../../state/auth_state.dart';
 import '../../widgets/common.dart';
 import '../../widgets/map_view.dart';
+import '../../widgets/ui.dart';
 
 /// Rider app: assigned deliveries, live GPS sharing, directions, and delivery confirmation by code.
 class RiderScreen extends StatefulWidget {
@@ -58,47 +60,113 @@ class _RiderScreenState extends State<RiderScreen> {
     final done = deliveries.where((d) => d['status'] == 'DELIVERED').toList();
     final store = _data?['store'] as Json?;
     return Scaffold(
-      backgroundColor: AppColors.slate100,
+      backgroundColor: AppColors.slate50,
       appBar: AppBar(
-        backgroundColor: AppColors.ink,
-        foregroundColor: Colors.white,
-        titleTextStyle: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(color: Colors.white),
-        title: Text('MGK Rider · ${user?.firstName ?? ''}'),
-        actions: [IconButton(onPressed: () => context.read<AuthState>().logout(), icon: const Icon(Icons.logout), tooltip: 'Sign out')],
+        // Riders are customers too: this goes back to the shop (Home), where "My deliveries" brings them here again.
+        leading: context.canPop() ? const BackButton() : IconButton(tooltip: 'Shop', onPressed: () => context.go('/home'), icon: const Icon(Icons.storefront_outlined)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('My Deliveries'),
+            Text(
+              'Rider · ${user?.firstName ?? ''}',
+              style: const TextStyle(fontSize: 12.5, color: AppColors.brand600, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(onPressed: () => context.go('/account'), icon: const Icon(Icons.person_outline_rounded), tooltip: 'My account'),
+          IconButton(onPressed: () => context.read<AuthState>().logout(), icon: const Icon(Icons.logout_rounded), tooltip: 'Sign out'),
+        ],
       ),
       body: _data == null
           ? (_error != null ? ErrorRetry(error: _error!, onRetry: _load) : const Center(child: CircularProgressIndicator()))
           : RefreshIndicator(
               onRefresh: _load,
-              child: ListView(padding: const EdgeInsets.all(16), children: [
-                Text('Your deliveries', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                if (active.isEmpty)
-                  const CardBox(child: EmptyState(icon: Icons.navigation_outlined, title: 'No deliveries right now', message: 'New deliveries appear here automatically when the pharmacy sends them out to you.'))
-                else
-                  for (final d in active)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: _DeliveryCard(key: ValueKey(d['number']), d: d, store: LatLng((store!['lat'] as num).toDouble(), (store['lng'] as num).toDouble()), canSimulate: _data!['canSimulate'] == true && AppConfig.devTools, onDone: _load),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Panel(
+                    onTap: () => context.go('/home'),
+                    child: const Row(
+                      children: [
+                        IconBadge(Icons.storefront_outlined, size: 40),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Shop medicines', style: TextStyle(fontWeight: FontWeight.w700)),
+                              Text('Browse and order like any customer', style: TextStyle(fontSize: 12.5, color: AppColors.inkMuted)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded, color: AppColors.hint),
+                      ],
                     ),
-                if (done.isNotEmpty) ...[
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'ACTIVE DELIVERIES',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1, color: AppColors.inkMuted),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('DELIVERED TODAY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1, color: AppColors.inkMuted)),
-                  const SizedBox(height: 8),
-                  for (final d in done)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: CardBox(
-                        child: Row(children: [
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(d['number'] as String, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w700))), Text('${(d['customer'] as Json)['firstName']} · ${(d['address'] as Json)['city']}', style: const TextStyle(color: AppColors.inkMuted))])),
-                          const Icon(Icons.check_circle_outline, color: AppColors.care600, size: 18),
-                          const SizedBox(width: 4),
-                          Text(fmtDateTime(d['deliveredAt'] as String?), style: const TextStyle(color: AppColors.care700, fontSize: 12.5)),
-                        ]),
+                  if (active.isEmpty)
+                    const CardBox(
+                      child: EmptyState(
+                        icon: Icons.navigation_outlined,
+                        title: 'No deliveries right now',
+                        message: 'New deliveries appear here automatically when the pharmacy sends them out to you.',
                       ),
+                    )
+                  else
+                    for (final d in active)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _DeliveryCard(
+                          key: ValueKey(d['number']),
+                          d: d,
+                          store: LatLng((store!['lat'] as num).toDouble(), (store['lng'] as num).toDouble()),
+                          canSimulate: _data!['canSimulate'] == true && AppConfig.devTools,
+                          onDone: _load,
+                        ),
+                      ),
+                  if (done.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'DELIVERED TODAY',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1, color: AppColors.inkMuted),
                     ),
+                    const SizedBox(height: 8),
+                    for (final d in done)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: CardBox(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(d['number'] as String, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                    ),
+                                    Text('${(d['customer'] as Json)['firstName']} · ${(d['address'] as Json)['city']}', style: const TextStyle(color: AppColors.inkMuted)),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.check_circle_outline, color: AppColors.care600, size: 18),
+                              const SizedBox(width: 4),
+                              Text(fmtDateTime(d['deliveredAt'] as String?), style: const TextStyle(color: AppColors.care700, fontSize: 12.5)),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ],
-              ]),
+              ),
             ),
     );
   }
@@ -202,80 +270,138 @@ class _DeliveryCardState extends State<_DeliveryCard> {
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_number, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.inkMuted)),
-                Text('${customer['firstName']} ${customer['lastName']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                Text('${address['line1']}${address['line2'] != null ? ', ${address['line2']}' : ''}, ${address['city']}', style: const TextStyle(color: AppColors.inkSoft)),
-                if (address['landmark'] != null) Text('Landmark: ${address['landmark']}', style: const TextStyle(color: AppColors.inkMuted)),
-                Text(plural((d['itemCount'] as num).toInt(), 'item'), style: const TextStyle(fontSize: 12, color: AppColors.inkMuted)),
-              ]),
-            ),
-            Pill(sharing ? 'Live' : 'Not sharing', bg: sharing ? AppColors.care100 : AppColors.slate100, fg: sharing ? AppColors.care700 : AppColors.inkSoft, icon: Icons.sensors),
-          ]),
-        ),
-        if (d['requiresId'] == true) const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 10), child: AlertBox(tone: AlertTone.warning, message: "Contains a controlled medicine. Check the recipient's ID.")),
-        if (d['notes'] != null) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 10), child: AlertBox(message: 'Customer note: ${d['notes']}')),
-        MgkMap(
-          height: 220,
-          borderRadius: 0,
-          pins: [MapPin(PinKind.store, widget.store), if (destPoint != null) MapPin(PinKind.home, destPoint), if (_me != null) MapPin(PinKind.rider, _me!, heading: _heading)],
-          fitKey: '${_me != null}-${destPoint != null}',
-        ),
-        if (dest != null && dest['source'] != 'PIN') Container(color: AppColors.amber50, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: const Text('Approximate location. Call the customer for directions.', style: TextStyle(fontSize: 12.5, color: AppColors.amber800))),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(children: [
-              Expanded(child: OutlinedButton.icon(onPressed: () => openLink('tel:${customer['phone']}'), icon: const Icon(Icons.call_outlined), label: const Text('Call'))),
-              const SizedBox(width: 10),
-              Expanded(child: OutlinedButton.icon(onPressed: () => openLink(directions), icon: const Icon(Icons.navigation_outlined), label: const Text('Directions'))),
-            ]),
-            const SizedBox(height: 10),
-            sharing
-                ? FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: AppColors.ink), onPressed: _stop, icon: const Icon(Icons.stop_circle_outlined), label: const Text('Stop sharing location'))
-                : FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: AppColors.care600, minimumSize: const Size(10, 54)), onPressed: _start, icon: const Icon(Icons.play_circle_outline), label: const Text('Start trip: share my location')),
-            if (_gpsError != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_gpsError!, style: const TextStyle(color: AppColors.orange800))),
-            if (widget.canSimulate)
-              TextButton(
-                onPressed: _simulating
-                    ? null
-                    : () async {
-                        setState(() => _simulating = true);
-                        await runAction(context, () => api.post('/rider/deliveries/$_number/simulate'), success: 'Simulated drive started (about 90 seconds)');
-                      },
-                child: Text(_simulating ? 'Simulated drive running…' : 'Demo only: simulate this drive', style: const TextStyle(color: AppColors.inkMuted)),
-              ),
-          ]),
-        ),
-        Container(
-          color: AppColors.slate50,
-          padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text("Delivered? Enter the customer's 4-digit code", style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: _code,
-                  keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22, letterSpacing: 10, fontWeight: FontWeight.w800),
-                  decoration: InputDecoration(counterText: '', hintText: '••••', errorText: _codeError),
-                  onChanged: (_) => setState(() {}),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _number,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.inkMuted),
+                      ),
+                      Text('${customer['firstName']} ${customer['lastName']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                      Text('${address['line1']}${address['line2'] != null ? ', ${address['line2']}' : ''}, ${address['city']}', style: const TextStyle(color: AppColors.inkSoft)),
+                      if (address['landmark'] != null) Text('Landmark: ${address['landmark']}', style: const TextStyle(color: AppColors.inkMuted)),
+                      Text(plural((d['itemCount'] as num).toInt(), 'item'), style: const TextStyle(fontSize: 12, color: AppColors.inkMuted)),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              FilledButton.icon(onPressed: _busy || _code.text.length != 4 ? null : _confirm, icon: const Icon(Icons.check_circle_outline), label: const Text('Confirm')),
-            ]),
-          ]),
-        ),
-      ]),
+                Pill(sharing ? 'Live' : 'Not sharing', bg: sharing ? AppColors.care100 : AppColors.slate100, fg: sharing ? AppColors.care700 : AppColors.inkSoft, icon: Icons.sensors),
+              ],
+            ),
+          ),
+          if (d['requiresId'] == true)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: AlertBox(tone: AlertTone.warning, message: "Contains a controlled medicine. Check the recipient's ID."),
+            ),
+          if (d['notes'] != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: AlertBox(message: 'Customer note: ${d['notes']}'),
+            ),
+          MgkMap(
+            height: 220,
+            borderRadius: 0,
+            scrollFriendly: true,
+            pins: [
+              MapPin(PinKind.store, widget.store),
+              if (destPoint != null) MapPin(PinKind.home, destPoint),
+              if (_me != null) MapPin(PinKind.rider, _me!, heading: _heading),
+            ],
+            fitKey: '${_me != null}-${destPoint != null}',
+          ),
+          if (dest != null && dest['source'] != 'PIN')
+            Container(
+              color: AppColors.amber50,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: const Text('Approximate location. Call the customer for directions.', style: TextStyle(fontSize: 12.5, color: AppColors.amber800)),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(onPressed: () => openLink('tel:${customer['phone']}'), icon: const Icon(Icons.call_outlined), label: const Text('Call')),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(onPressed: () => openLink(directions), icon: const Icon(Icons.navigation_outlined), label: const Text('Directions')),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                sharing
+                    ? FilledButton.icon(
+                        style: FilledButton.styleFrom(backgroundColor: AppColors.ink),
+                        onPressed: _stop,
+                        icon: const Icon(Icons.stop_circle_outlined),
+                        label: const Text('Stop sharing location'),
+                      )
+                    : FilledButton.icon(
+                        style: FilledButton.styleFrom(backgroundColor: AppColors.care600, minimumSize: const Size(10, 54)),
+                        onPressed: _start,
+                        icon: const Icon(Icons.play_circle_outline),
+                        label: const Text('Start trip: share my location'),
+                      ),
+                if (_gpsError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(_gpsError!, style: const TextStyle(color: AppColors.orange800)),
+                  ),
+                if (widget.canSimulate)
+                  TextButton(
+                    onPressed: _simulating
+                        ? null
+                        : () async {
+                            setState(() => _simulating = true);
+                            await runAction(context, () => api.post('/rider/deliveries/$_number/simulate'), success: 'Simulated drive started (about 90 seconds)');
+                          },
+                    child: Text(_simulating ? 'Simulated drive running…' : 'Demo only: simulate this drive', style: const TextStyle(color: AppColors.inkMuted)),
+                  ),
+              ],
+            ),
+          ),
+          Container(
+            color: AppColors.slate50,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text("Delivered? Enter the customer's 4-digit code", style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _code,
+                        keyboardType: TextInputType.number,
+                        maxLength: 4,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 22, letterSpacing: 10, fontWeight: FontWeight.w800),
+                        decoration: InputDecoration(counterText: '', hintText: '••••', errorText: _codeError),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton.icon(onPressed: _busy || _code.text.length != 4 ? null : _confirm, icon: const Icon(Icons.check_circle_outline), label: const Text('Confirm')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

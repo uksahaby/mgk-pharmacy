@@ -318,7 +318,7 @@ class QuantityStepper extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = small ? 34.0 : 44.0;
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(99), border: Border.all(color: const Color(0xFFCBD5E1))),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE5E7EB))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(width: size, height: size, child: IconButton(padding: EdgeInsets.zero, iconSize: 18, onPressed: value > 1 ? () => onChanged(value - 1) : null, icon: const Icon(Icons.remove), tooltip: 'Decrease quantity')),
         SizedBox(width: 28, child: Text('$value', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700))),

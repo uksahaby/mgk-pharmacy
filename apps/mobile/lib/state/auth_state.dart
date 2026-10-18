@@ -22,6 +22,8 @@ class AuthState extends ChangeNotifier {
   bool get signedIn => _user != null;
 
   Future<void> load() async {
+    // Keep the splash up briefly so it reads as a designed screen rather than a flash.
+    final splash = Future<void>.delayed(const Duration(milliseconds: 1400));
     try {
       if (await api.token_ != null) {
         // A patchy connection at launch must not look like being signed out: retry network
@@ -42,6 +44,7 @@ class AuthState extends ChangeNotifier {
     } catch (_) {
       // still offline: show the signed-out view but keep the saved session for the next launch
     } finally {
+      await splash;
       _ready = true;
       notifyListeners();
     }

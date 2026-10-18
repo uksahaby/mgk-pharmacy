@@ -23,11 +23,16 @@ riderRouter.get(
   ah(async (req, res) => {
     // "Delivered today" in the rider app means since midnight in Nigeria, not the last 24 hours.
     const since = startOfNigerianDay();
-    const orders = await prisma.order.findMany({
+    const found = await prisma.order.findMany({
       where: { riderId: req.user!.id, OR: [{ status: "DISPATCHED" }, { status: "DELIVERED", deliveredAt: { gte: since } }] },
-      orderBy: [{ status: "asc" }, { dispatchedAt: "asc" }],
       include: { items: true, locations: { orderBy: { createdAt: "desc" }, take: 1 } },
     });
+    // Deliveries in progress oldest first (first dispatched, first delivered); finished ones newest first.
+    const time = (d: Date | null) => d?.getTime() ?? 0;
+    const orders = [
+      ...found.filter((o) => o.status === "DISPATCHED").sort((a, b) => time(a.dispatchedAt) - time(b.dispatchedAt)),
+      ...found.filter((o) => o.status === "DELIVERED").sort((a, b) => time(b.deliveredAt) - time(a.deliveredAt)),
+    ];
     res.json({
       store: storeLocation(),
       deliveries: orders.map((o) => ({

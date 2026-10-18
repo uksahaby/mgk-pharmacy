@@ -38,6 +38,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
 
 # App icon and splash: the MGK mark, drawn by tool/make_brand_assets.py.
 # Regenerate with: dart run flutter_launcher_icons && dart run flutter_native_splash:create

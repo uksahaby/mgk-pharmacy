@@ -43,6 +43,11 @@ class _MgkAppState extends State<MgkApp> {
           debugShowCheckedModeBanner: false,
           theme: buildTheme(),
           routerConfig: _router,
+          // Dark status-bar icons on the white screens; the red splash sets its own light ones.
+          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+            value: const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.dark, statusBarBrightness: Brightness.light),
+            child: child!,
+          ),
         ),
       );
 }

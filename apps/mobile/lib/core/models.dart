@@ -140,6 +140,7 @@ class OrderItem {
 class OrderEvent {
   OrderEvent(this.j);
   final Json j;
+  String get type => j['type'] as String? ?? '';
   String get message => j['message'] as String;
   String get createdAt => j['createdAt'] as String;
   String? get actor => j['actor'] as String?;

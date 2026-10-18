@@ -24,12 +24,15 @@ const riderEmail = String.fromEnvironment('RIDER_EMAIL');
 const riderPassword = String.fromEnvironment('RIDER_PASSWORD');
 
 /// Pumps until [finder] matches (network calls are real, so we poll instead of pumpAndSettle).
-Future<void> waitFor(WidgetTester t, Finder finder, {Duration timeout = const Duration(seconds: 25)}) async {
+Future<void> waitFor(WidgetTester t, Finder finder, {Duration timeout = const Duration(seconds: 40)}) async {
   final end = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(end)) {
     await t.pump(const Duration(milliseconds: 250));
     if (finder.evaluate().isNotEmpty) return;
   }
+  // Show what is on screen to make failures easy to diagnose (password fields are obscured, so never shown).
+  final visible = find.byType(Text).evaluate().map((e) => (e.widget as Text).data).whereType<String>().where((s) => s.trim().isNotEmpty).take(25).join(' | ');
+  debugPrint('SCREEN: $visible');
   throw TestFailure('Timed out waiting for $finder');
 }
 
@@ -49,9 +52,9 @@ Future<void> goTo(WidgetTester t, String location) async {
 
 Future<void> signIn(WidgetTester t, String email, String password) async {
   await waitFor(t, find.text('Welcome back'));
-  await t.enterText(find.widgetWithText(TextField, 'Email address'), email);
-  await t.enterText(find.widgetWithText(TextField, 'Password'), password);
-  await tapText(t, 'Sign in');
+  await t.enterText(find.widgetWithText(TextField, 'Enter your email or phone number'), email);
+  await t.enterText(find.widgetWithText(TextField, 'Enter your password'), password);
+  await tapText(t, 'Sign In');
 }
 
 void main() {
@@ -68,12 +71,12 @@ void main() {
     await t.pumpWidget(MgkApp(auth: auth, cart: cart, store: store));
 
     // ---- Customer ----
-    await waitFor(t, find.text('Shop by health need'));
+    await waitFor(t, find.text('Shop by Category'));
     await tapText(t, 'Account');
     await waitFor(t, find.text('Your pharmacy, in your pocket'));
     await tapText(t, 'Sign in');
     await signIn(t, customerEmail, customerPassword);
-    await waitFor(t, find.text('Shop by health need'));
+    await waitFor(t, find.text('Shop by Category'));
     expect(auth.user?.role, 'CUSTOMER');
 
     await tapText(t, 'Shop');
@@ -85,24 +88,24 @@ void main() {
     await t.pump(const Duration(milliseconds: 500));
     expect(cart.count, 1);
 
-    await tapText(t, 'Cart');
-    await waitFor(t, find.text('Continue to checkout'));
+    await goTo(t, '/cart'); // the cart now lives behind the header icon
+    await waitFor(t, find.text('Proceed to checkout'));
     await t.pump(const Duration(seconds: 5)); // live quote, and let the 'added to cart' snackbar clear
-    await tapText(t, 'Continue to checkout');
-    await waitFor(t, find.text('Contact details'));
+    await tapText(t, 'Proceed to checkout');
+    await waitFor(t, find.text('Delivery Address'));
     await t.pump(const Duration(seconds: 2));
     // Checkout is a long, lazily built list: scroll each control into view before tapping it.
     final list = find.byType(Scrollable).first;
-    await t.scrollUntilVisible(find.text('Bank transfer'), 300, scrollable: list);
-    await tapText(t, 'Bank transfer');
+    await t.scrollUntilVisible(find.text('Bank Transfer'), 300, scrollable: list);
+    await tapText(t, 'Bank Transfer');
     final agree = find.byType(CheckboxListTile).last;
     await t.scrollUntilVisible(agree, 300, scrollable: list);
     await t.tap(agree);
     await t.pump(const Duration(milliseconds: 300));
-    await t.tap(find.textContaining('Place order'));
+    await t.tap(find.textContaining('Place Order'));
     await waitFor(t, find.text('Complete your bank transfer'), timeout: const Duration(seconds: 40));
-    final orderTitle = find.descendant(of: find.byType(AppBar), matching: find.textContaining('MGK-'));
-    final orderNumber = (t.widget<Text>(orderTitle.first)).data!;
+    final orderTitle = find.textContaining('#MGK-');
+    final orderNumber = (t.widget<Text>(orderTitle.first)).data!.replaceFirst('#', '');
     debugPrint('PLACED $orderNumber');
 
     await auth.logout();
@@ -130,7 +133,7 @@ void main() {
     await t.tap(find.textContaining('(').last);
     await t.pump(const Duration(milliseconds: 500));
     await tapText(t, 'Send out for delivery');
-    await waitFor(t, find.text('Live delivery'), timeout: const Duration(seconds: 30));
+    await waitFor(t, find.text('Delivery rider'), timeout: const Duration(seconds: 30));
     debugPrint('DISPATCHED with live map');
 
     await auth.logout();
@@ -140,9 +143,10 @@ void main() {
     await waitFor(t, find.text('Your pharmacy, in your pocket'));
     await tapText(t, 'Sign in');
     await signIn(t, riderEmail, riderPassword);
-    await waitFor(t, find.text('Your deliveries'));
+    await waitFor(t, find.text('My Deliveries'));
+    await waitFor(t, find.text('ACTIVE DELIVERIES')); // the list loads after the title
     for (var i = 0; i < 12 && find.text(orderNumber).evaluate().isEmpty; i++) {
-      await t.drag(find.byType(ListView).first, const Offset(0, -400), warnIfMissed: false);
+      await t.drag(find.byType(Scrollable).first, const Offset(0, -400), warnIfMissed: false);
       await t.pump(const Duration(milliseconds: 600));
     }
     expect(find.text(orderNumber), findsWidgets);

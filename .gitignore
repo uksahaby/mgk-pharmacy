@@ -4,7 +4,8 @@ dist/
 *.db
 *.db-journal
 .env
-.env.local
+.env.*
+!.env.example
 apps/api/uploads/*
 !apps/api/uploads/.gitkeep
 *.log

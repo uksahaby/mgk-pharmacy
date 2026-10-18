@@ -28,4 +28,18 @@ class Site {
     ('Monday – Saturday', '8:00am – 10:00pm'),
     ('Sunday', '12:00pm – 8:00pm'),
   ];
+
+  /// Same hours as numbers (24h, Nigerian time) for "open now". Keep in sync with [hours]. Key 7 = Sunday (DateTime.weekday).
+  static const openingHours = {1: (8, 22), 2: (8, 22), 3: (8, 22), 4: (8, 22), 5: (8, 22), 6: (8, 22), 7: (12, 20)};
+
+  /// Whether the store is open right now in Nigeria (UTC+1, no daylight saving), with a short label.
+  static (bool, String) openStatus([DateTime? now]) {
+    final wat = (now ?? DateTime.now()).toUtc().add(const Duration(hours: 1));
+    final hour = wat.hour + wat.minute / 60;
+    final (open, close) = openingHours[wat.weekday]!;
+    String label(int h) => '${h % 12 == 0 ? 12 : h % 12}${h < 12 ? 'am' : 'pm'}';
+    if (hour >= open && hour < close) return (true, 'Open now · until ${label(close)}');
+    if (hour < open) return (false, 'Closed · opens ${label(open)}');
+    return (false, 'Closed · opens tomorrow ${label(openingHours[wat.weekday % 7 + 1]!.$1)}');
+  }
 }
