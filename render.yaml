@@ -1,0 +1,52 @@
+# Render Blueprint for the API (apps/api). In Render: New > Blueprint, pick this repository.
+# Values marked `sync: false` are asked for when the Blueprint is created (see DEPLOY.md).
+services:
+  - type: web
+    name: mgk-api
+    runtime: node
+    plan: free # sleeps after ~15 min idle; the first request then takes ~1 min. Switch to "starter" to stay awake.
+    region: frankfurt # closest to Nigeria, and to Neon's aws-eu-central-1
+    branch: main
+    # Dev dependencies (Prisma CLI, TypeScript) are needed to build. Migrations run here because the
+    # free plan has no pre-deploy step; they only add tables/columns that don't exist yet.
+    buildCommand: npm ci --include=dev -w apps/api && npm run build -w apps/api && npm run db:migrate -w apps/api
+    startCommand: npm run start -w apps/api
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22" # Node 22 LTS: the AWS SDK (used for R2) requires it from 2027
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PROXY_SECRET # copy this value into Vercel too
+        generateValue: true
+      - key: DATABASE_URL # Neon pooled connection string (production branch)
+        sync: false
+      - key: DIRECT_URL # Neon direct connection string (production branch)
+        sync: false
+      - key: WEB_ORIGIN # the website address, e.g. https://mgk-pharmacy.vercel.app
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        value: mgk-uploads
+      - key: BANK_NAME
+        sync: false
+      - key: BANK_ACCOUNT_NAME
+        sync: false
+      - key: BANK_ACCOUNT_NUMBER
+        sync: false
+      - key: STORE_LAT
+        sync: false
+      - key: STORE_LNG
+        sync: false
+      - key: UNPAID_ORDER_TTL_HOURS
+        value: "48"

@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-canvas text-ink antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight text-ink;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white;
+  }
+  ::selection {
+    @apply bg-brand-100 text-brand-900;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800;
+  }
+  .btn-dark {
+    @apply btn bg-ink text-white hover:bg-slate-800;
+  }
+  .btn-outline {
+    @apply btn border border-slate-300 bg-white text-ink hover:border-slate-400 hover:bg-slate-50;
+  }
+  .btn-ghost {
+    @apply btn text-ink-soft hover:bg-slate-100;
+  }
+  .btn-care {
+    @apply btn bg-care-600 text-white hover:bg-care-700;
+  }
+  .btn-sm {
+    @apply px-3.5 py-1.5 text-xs;
+  }
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-card;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink-soft;
+  }
+  .input {
+    @apply block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-slate-400
+      transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100
+      disabled:bg-slate-50 disabled:text-slate-500;
+  }
+  .input-error {
+    @apply border-brand-500 ring-4 ring-brand-50;
+  }
+  .field-error {
+    @apply mt-1.5 text-xs font-medium text-brand-700;
+  }
+  .hint {
+    @apply mt-1.5 text-xs text-ink-muted;
+  }
+
+  .chip {
+    @apply inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+
+  .prose-mgk {
+    @apply space-y-4 text-[15px] leading-7 text-ink-soft;
+  }
+  .prose-mgk h2 {
+    @apply pt-4 text-xl font-semibold text-ink;
+  }
+  .prose-mgk h3 {
+    @apply pt-2 text-base font-semibold text-ink;
+  }
+  .prose-mgk ul {
+    @apply list-disc space-y-1.5 pl-5;
+  }
+  .prose-mgk a {
+    @apply font-medium text-brand-700 underline underline-offset-2;
+  }
+  .prose-mgk table {
+    @apply w-full overflow-hidden rounded-xl border border-slate-200 text-sm;
+  }
+  .prose-mgk th {
+    @apply bg-slate-50 px-3 py-2 text-left font-semibold text-ink;
+  }
+  .prose-mgk td {
+    @apply border-t border-slate-200 px-3 py-2 align-top;
+  }
+}
+
+/* Map markers (Leaflet divIcons) */
+.mgk-pin {
+  @apply grid h-9 w-9 place-items-center rounded-full rounded-br-none shadow-lift ring-[3px] ring-white;
+  transform: rotate(45deg);
+}
+.mgk-pin > svg {
+  transform: rotate(-45deg);
+}
+.mgk-pin-store {
+  @apply bg-brand-600;
+}
+.mgk-pin-home {
+  @apply bg-ink;
+}
+.mgk-rider {
+  @apply relative grid h-9 w-9 place-items-center;
+}
+.mgk-rider-dot {
+  @apply relative z-10 grid h-9 w-9 place-items-center rounded-full bg-care-600 shadow-lift ring-[3px] ring-white transition-transform duration-700;
+}
+.mgk-rider-pulse {
+  @apply absolute inset-0 rounded-full bg-care-500/40;
+  animation: mgk-pulse 2s ease-out infinite;
+}
+.mgk-me {
+  @apply h-4 w-4 rounded-full bg-sky-500 ring-4 ring-sky-200;
+  margin: 10px;
+}
+@keyframes mgk-pulse {
+  from { transform: scale(1); opacity: 0.9; }
+  to { transform: scale(2.4); opacity: 0; }
+}
+.leaflet-marker-icon {
+  transition: transform 1.2s linear;
+}
+.leaflet-dragging .leaflet-marker-icon,
+.leaflet-zoom-anim .leaflet-marker-icon {
+  transition: none;
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}

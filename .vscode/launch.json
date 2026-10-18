@@ -1,0 +1,25 @@
+{
+  // Run configurations for VS Code-based editors (VS Code, Antigravity, Cursor).
+  // The app needs API_URL to find the backend; without it, it falls back to the emulator address.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Real Android phone over USB. Run `adb reverse tcp:4000 tcp:4000` after plugging the phone in.
+      "name": "MGK app: phone (USB)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "apps/mobile",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=API_URL=http://localhost:4000"]
+    },
+    {
+      // Android emulator: 10.0.2.2 is the computer's localhost as seen from the emulator.
+      "name": "MGK app: emulator",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "apps/mobile",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=API_URL=http://10.0.2.2:4000"]
+    }
+  ]
+}

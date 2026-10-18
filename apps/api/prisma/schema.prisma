@@ -1,0 +1,277 @@
+// PostgreSQL (Neon). Use a separate Neon branch for local development, never the production one.
+// DATABASE_URL is the pooled connection (used by the app); DIRECT_URL is the direct one (used by migrations).
+// Enum-like fields are stored as strings; allowed values are defined in src/lib/constants.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                 String         @id @default(cuid())
+  email              String         @unique
+  passwordHash       String
+  firstName          String
+  lastName           String
+  phone              String?
+  role               String         @default("CUSTOMER") // CUSTOMER | ADMIN | PHARMACIST | SUPPORT | INVENTORY | RIDER
+  active             Boolean        @default(true)
+  mustChangePassword Boolean        @default(false)
+  sessionVersion     Int            @default(0) // bumped to sign the user out everywhere
+  lastLoginAt        DateTime?
+  verificationStatus String         @default("UNVERIFIED") // UNVERIFIED | PENDING | APPROVED | REJECTED
+  marketingOptIn     Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  addresses          Address[]
+  orders             Order[]
+  prescriptions      Prescription[] @relation("PatientPrescriptions")
+  reviewedRx         Prescription[] @relation("ReviewedPrescriptions")
+  verifications      Verification[] @relation("UserVerifications")
+  reviewedVerifs     Verification[] @relation("ReviewedVerifications")
+  deliveries         Order[]        @relation("RiderDeliveries")
+  riderLocations     RiderLocation[]
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String   @default("Home")
+  fullName  String
+  phone     String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  landmark  String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String
+  icon        String
+  sortOrder   Int       @default(0)
+  products    Product[]
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  slug          String      @unique
+  name          String
+  genericName   String
+  brand         String
+  manufacturer  String?
+  strength      String?
+  dosageForm    String // Tablet, Capsule, Syrup, ...
+  packSize      String // e.g. "Pack of 30 tablets"
+  priceKobo     Int
+  compareAtKobo Int?
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  rxStatus      String      @default("OTC") // OTC | POM | CONTROLLED
+  coldChain     Boolean     @default(false)
+  description   String
+  usage         String
+  warnings      String
+  storage       String      @default("Store below 30°C in a dry place, away from direct sunlight.")
+  featured      Boolean     @default(false)
+  active        Boolean     @default(true)
+  soldCount     Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  batches       Batch[]
+  orderItems    OrderItem[]
+
+  @@index([categoryId])
+  @@index([rxStatus])
+}
+
+model Batch {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchNumber String
+  expiresAt   DateTime
+  quantity    Int
+  status      String   @default("ACTIVE") // ACTIVE | QUARANTINED | RECALLED
+  receivedAt  DateTime @default(now())
+
+  @@index([productId, expiresAt])
+}
+
+model Prescription {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation("PatientPrescriptions", fields: [userId], references: [id], onDelete: Cascade)
+  patientName    String
+  prescriberName String?
+  facility       String?
+  issuedOn       DateTime?
+  filePath       String
+  originalName   String
+  mimeType       String
+  notes          String?
+  status         String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewerNote   String?
+  reviewedById   String?
+  reviewedBy     User?     @relation("ReviewedPrescriptions", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  validUntil     DateTime?
+  createdAt      DateTime  @default(now())
+  orders         Order[]
+}
+
+model Verification {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation("UserVerifications", fields: [userId], references: [id], onDelete: Cascade)
+  type          String // PATIENT | DOCTOR | PHARMACIST
+  idType        String // NIN | DRIVERS_LICENCE | PASSPORT | VOTERS_CARD
+  idFilePath    String
+  licenseNumber String?
+  licensePath   String?
+  status        String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewerNote  String?
+  reviewedById  String?
+  reviewedBy    User?     @relation("ReviewedVerifications", fields: [reviewedById], references: [id])
+  reviewedAt    DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model ShippingZone {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  description String
+  states      String // comma separated list of states; "*" = everywhere else
+  feeKobo     Int
+  etaLabel    String
+  sortOrder   Int     @default(0)
+  orders      Order[]
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  number         String        @unique
+  accessKey      String
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  riderId        String?
+  rider          User?         @relation("RiderDeliveries", fields: [riderId], references: [id])
+  email          String
+  phone          String
+  firstName      String
+  lastName       String
+  status         String // see ORDER_STATUS in constants.ts
+  paymentMethod  String // PAYSTACK | BANK_TRANSFER | PAY_ON_PICKUP
+  paymentStatus  String        @default("UNPAID") // UNPAID | PROOF_SUBMITTED | PAID | REFUND_PENDING | REFUNDED
+  paymentRef     String?
+  proofFilePath  String?
+  fulfilment     String // DELIVERY | PICKUP
+  zoneId         String?
+  zone           ShippingZone? @relation(fields: [zoneId], references: [id])
+  addressLine1   String?
+  addressLine2   String?
+  city           String?
+  state          String?
+  landmark       String?
+  deliveryLat    Float?
+  deliveryLng    Float?
+  locationSource String? // PIN | GEOCODED | CITY
+  deliveryCode   String?
+  dispatchedAt   DateTime?
+  deliveredAt    DateTime?
+  subtotalKobo   Int
+  shippingKobo   Int
+  totalKobo      Int
+  notes          String?
+  prescriptionId String?
+  prescription   Prescription? @relation(fields: [prescriptionId], references: [id])
+  requiresRx     Boolean       @default(false)
+  paidAt         DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  items          OrderItem[]
+  events         OrderEvent[]
+  locations      RiderLocation[]
+
+  @@index([userId])
+  @@index([riderId])
+  @@index([status])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  name        String
+  packSize    String
+  rxStatus    String
+  priceKobo   Int
+  quantity    Int
+  allocations String  @default("[]") // JSON: [{ batchId, quantity }] for FEFO restock on cancel
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type      String
+  message   String
+  actor     String   @default("system")
+  createdAt DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  topic     String
+  message   String
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+/** GPS points sent by the rider while an order is out for delivery. Pruned after delivery. */
+model RiderLocation {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  riderId   String
+  rider     User     @relation(fields: [riderId], references: [id])
+  lat       Float
+  lng       Float
+  heading   Float?
+  speed     Float? // metres per second
+  accuracy  Float? // metres
+  createdAt DateTime @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+/** Who did what in the staff area: user management, role changes and other sensitive actions. */
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorName String
+  action    String // e.g. USER_CREATED, ROLE_CHANGED, USER_DEACTIVATED, PASSWORD_RESET
+  targetId  String?
+  summary   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

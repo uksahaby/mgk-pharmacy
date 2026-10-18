@@ -1,0 +1,20 @@
+node_modules/
+.next/
+dist/
+*.db
+*.db-journal
+.env
+.env.local
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+*.log
+.DS_Store
+next-env.d.ts
+*.tsbuildinfo
+
+# MGK catalogue download (26 MB, re-created by `npm run fetch:mgk`) and import report
+apps/api/prisma/data/mgk-products.json
+apps/api/prisma/data/mgk-import-report.csv
+
+# Local Vercel / Render CLI state
+.vercel
