@@ -91,6 +91,7 @@ model Product {
   updatedAt     DateTime    @updatedAt
   batches       Batch[]
   orderItems    OrderItem[]
+  hospitalItems HospitalPrescriptionItem[]
 
   @@index([categoryId])
   @@index([rxStatus])
@@ -205,6 +206,7 @@ model Order {
   items          OrderItem[]
   events         OrderEvent[]
   locations      RiderLocation[]
+  hospitalItems  HospitalPrescriptionItem[]
 
   @@index([userId])
   @@index([riderId])
@@ -233,6 +235,58 @@ model OrderEvent {
   message   String
   actor     String   @default("system")
   createdAt DateTime @default(now())
+}
+
+/**
+ * A prescription sent electronically by MGK Care, the hospital system: one per hospital visit.
+ * The hospital decides what was prescribed; the pharmacy decides what to supply against it.
+ */
+model HospitalPrescription {
+  id               String                     @id @default(cuid())
+  visitId          String                     @unique // MGK Care's id for the visit
+  patientMrn       String
+  firstName        String
+  lastName         String
+  phone            String?
+  sex              String?
+  birthDate        String? // YYYY-MM-DD
+  prescriberName   String
+  clinic           String?
+  allergies        String? // as recorded at the hospital; null when nothing was recorded
+  hmo              String?
+  prescribedAt     DateTime
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  items            HospitalPrescriptionItem[]
+
+  @@index([updatedAt])
+}
+
+model HospitalPrescriptionItem {
+  id                String               @id @default(cuid())
+  prescriptionId    String
+  prescription      HospitalPrescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  sourceId          String               @unique // MGK Care's id for this medicine order
+  medicine          String
+  dosage            String
+  quantity          Float? // as prescribed, e.g. 20
+  quantityUnit      String? // e.g. "tablets"
+  quantityText      String? // when the quantity was not a number
+  prescribedAt      DateTime
+  status            String               @default("ACTIVE") // ACTIVE | CANCELLED (by the prescriber)
+  // What the pharmacy supplied: an order line, or a reason for not supplying.
+  orderId           String?
+  order             Order?               @relation(fields: [orderId], references: [id])
+  productId         String?
+  product           Product?             @relation(fields: [productId], references: [id])
+  supplyQuantity    Int?
+  notSuppliedReason String?
+  handledBy         String?
+  handledAt         DateTime?
+  updatedAt         DateTime             @updatedAt
+
+  @@index([prescriptionId])
+  @@index([orderId])
 }
 
 model ContactMessage {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, BadgeCheck, Banknote, Boxes, CalendarClock, FileText, Inbox, PackageOpen, Receipt } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Banknote, Boxes, CalendarClock, FileText, Inbox, PackageOpen, Receipt, Stethoscope } from "lucide-react";
 import { apiGet, requireStaff } from "@/lib/server-api";
 import { can, type Order, type OrderStatus } from "@/lib/types";
 import { formatNaira, orderStatusLabel, pluralize } from "@/lib/format";
@@ -7,7 +7,7 @@ import { ROLE_LABEL } from "@/lib/roles";
 import { OrdersTable } from "@/components/admin/orders-table";
 import { Alert } from "@/components/ui";
 
-type QueueKey = "rxPending" | "verifPending" | "proofPending" | "lowStock" | "neverStocked" | "expiringBatches" | "messages";
+type QueueKey = "hospitalRxPending" | "rxPending" | "verifPending" | "proofPending" | "lowStock" | "neverStocked" | "expiringBatches" | "messages";
 type Summary = {
   ordersByStatus: Partial<Record<OrderStatus, number>>;
   today: { revenueKobo: number; orders: number } | null;
@@ -21,6 +21,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const [user, { denied }] = await Promise.all([requireStaff(), searchParams]);
   const s = (await apiGet<Summary>("/admin/summary"))!;
   const allQueues: { href: string; label: string; key: QueueKey; icon: typeof FileText; alert: boolean }[] = [
+    { href: "/admin/hospital", label: "Hospital prescriptions to supply", key: "hospitalRxPending", icon: Stethoscope, alert: true },
     { href: "/admin/prescriptions", label: "Prescriptions to review", key: "rxPending", icon: FileText, alert: true },
     { href: "/admin/orders?queue=proof", label: "Transfer receipts to confirm", key: "proofPending", icon: Receipt, alert: true },
     { href: "/admin/verifications", label: "ID verifications", key: "verifPending", icon: BadgeCheck, alert: true },

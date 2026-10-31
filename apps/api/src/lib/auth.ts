@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import type { User } from "@prisma/client";
@@ -5,6 +6,12 @@ import { env } from "./env";
 import { prisma } from "./prisma";
 import { HttpError, forbidden } from "./errors";
 import { can, permissionsFor, type Permission, type Role } from "./constants";
+
+/** Compares secrets in constant time. */
+export function safeEqual(a: string, b: string) {
+  const x = Buffer.from(a), y = Buffer.from(b);
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
 
 export const SESSION_COOKIE = "mgk_session";
 const SESSION_DAYS = 14;

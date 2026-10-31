@@ -76,7 +76,8 @@ Every product that needs a pharmacist's check is listed in `apps/api/prisma/data
 - **Policy pages** (FAQ, delivery, returns, privacy under NDPA 2023, terms) in plain English and consistent with each other.
 
 ### Pharmacy staff (`/admin`)
-- **Overview:** revenue and work queues (prescriptions, transfer receipts, verifications, low stock, expiring batches, messages).
+- **Overview:** revenue and work queues (hospital prescriptions, prescriptions, transfer receipts, verifications, low stock, expiring batches, messages).
+- **Hospital prescriptions:** sent electronically by MGK Care, the MGK Health Care hospital system (see below).
 - **Orders:**
   - filters and search
   - confirm transfers, which moves the order to processing
@@ -119,6 +120,20 @@ Every product that needs a pharmacist's check is listed in `apps/api/prisma/data
 - The web app hides menu items, dashboard figures and pages a role can't use, but the server is what enforces access.
 - Every staff change is recorded in the **activity log**.
 
+### Hospital prescriptions (MGK Care)
+Doctors at MGK Health Care prescribe in MGK Care (the `mgk-care` project). Its pharmacy link sends each visit's prescriptions here and reads back what happened to each medicine. The hospital no longer charges for medicines; the patient pays here when they collect.
+
+- **Queue** (`/admin/hospital`, pharmacists and admins): visits with medicines still to supply, or with a change to check. Search by name or hospital number (MRN).
+- **Prescription page:**
+  - patient details, the prescriber and clinic, allergies recorded at the hospital (or a warning that none were recorded), and the patient's HMO
+  - for each medicine, choose a product (the same ingredient, in stock first, then matching strength are suggested) or search the catalogue, and set the number of packs
+  - or mark a medicine as not supplied with a reason (out of stock, patient declined, …), or leave it for later
+- **Supplying** creates a normal pickup order (pay at pickup) from first-expiring stock. From there it works like any pickup order: ready for pickup, then collected, which records the payment. Orders without an email address send no emails.
+- **Changes from the doctor:** a medicine the doctor cancels before it is supplied disappears from the list. One cancelled after it was put on an order raises a warning on the prescription and on the order page.
+- **Hospital API** (`/hospital/*`, `apps/api/src/routes/hospital.ts`): `PUT /hospital/prescriptions/:visitId` creates or updates a visit's prescription, and `GET /hospital/prescriptions/updates?since=` lists what changed. It is authenticated with a shared key (`HOSPITAL_API_KEY`, 32+ random characters, the same value as `PHARMACY_API_KEY` in MGK Care). Without the key set, the endpoints are switched off.
+
+Not handled yet: HMO cover for medicines (the pharmacist checks it by hand) and showing pharmacy stock to doctors while they prescribe.
+
 ### Live delivery tracking
 - **Checkout:** customers can drop a delivery pin on a map, or use their phone's location. Without a pin, the address is looked up automatically (OpenStreetMap Nominatim), falling back to the town centre.
 - **Dispatch:** staff choose a rider when sending an order out. The customer gets a 4-digit **delivery code** by email.
@@ -157,3 +172,4 @@ Follow [DEPLOY.md](DEPLOY.md), then:
 3. Replace the console mailer in `apps/api/src/lib/mailer.ts` with an email or SMS/WhatsApp provider, then add password reset by email.
 4. Check the imported catalogue: every prescription medicine **must** be tagged POM or CONTROLLED.
 5. Switch map tiles and geocoding to a commercial provider.
+6. To receive prescriptions from MGK Care, set `HOSPITAL_API_KEY` on Render and deploy (the `hospital_prescriptions` migration runs with the other migrations).

@@ -1,6 +1,6 @@
 import { FileText, ShieldAlert, Snowflake } from "lucide-react";
 import clsx from "clsx";
-import type { OrderStatus, PaymentStatus, RxStatus } from "@/lib/types";
+import type { HospitalItemState, OrderStatus, PaymentStatus, RxStatus } from "@/lib/types";
 import { orderStatusLabel, paymentStatusLabel } from "@/lib/format";
 
 export function RxBadge({ status, className }: { status: RxStatus; className?: string }) {
@@ -63,4 +63,18 @@ const REVIEW_LABEL = { PENDING: "In review", APPROVED: "Approved", REJECTED: "No
 export function ReviewPill({ status, expired }: { status: keyof typeof REVIEW_TONE; expired?: boolean }) {
   if (expired) return <span className="chip bg-slate-200 text-slate-700">Expired</span>;
   return <span className={clsx("chip", REVIEW_TONE[status])}>{REVIEW_LABEL[status]}</span>;
+}
+
+const HOSPITAL_ITEM: Record<HospitalItemState, [string, string]> = {
+  WAITING: ["To supply", "bg-amber-100 text-amber-800"],
+  PREPARING: ["Being prepared", "bg-sky-100 text-sky-800"],
+  READY: ["Ready for collection", "bg-sky-100 text-sky-800"],
+  DISPENSED: ["Collected", "bg-care-100 text-care-700"],
+  NOT_SUPPLIED: ["Not supplied", "bg-slate-200 text-slate-700"],
+  CANCELLED: ["Cancelled by doctor", "bg-slate-200 text-slate-700"],
+};
+
+export function HospitalItemPill({ state }: { state: HospitalItemState }) {
+  const [label, tone] = HOSPITAL_ITEM[state];
+  return <span className={clsx("chip", tone)}>{label}</span>;
 }

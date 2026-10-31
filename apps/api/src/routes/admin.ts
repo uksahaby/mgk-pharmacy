@@ -11,6 +11,8 @@ import { startOfNigerianDay } from "../lib/time";
 import { can, ORDER_STATUS, STAFF_TRANSITIONS, type OrderStatus, type Permission } from "../lib/constants";
 import { serializePrescription, serializeVerification } from "./account";
 import { staffRouter } from "./staff";
+import { hospitalAdminRouter } from "./hospital-admin";
+import { NEEDS_ACTION } from "../lib/hospital";
 
 export const adminRouter = Router();
 /**
@@ -22,6 +24,7 @@ const ACCESS_RULES: [RegExp, Permission | { read: Permission; write: Permission 
   [/^\/riders$/, "orders.manage"],
   [/^\/orders(\/|$)/, { read: "orders.view", write: "orders.manage" }],
   [/^\/prescriptions(\/|$)/, "prescriptions.review"],
+  [/^\/hospital-prescriptions(\/|$)/, "prescriptions.review"],
   [/^\/verifications(\/|$)/, "verifications.review"],
   [/^\/(products|batches)(\/|$)/, "products.manage"],
   [/^\/inventory$/, "inventory.manage"],
@@ -49,11 +52,12 @@ adminRouter.get(
   ah(async (req, res) => {
     const startOfDay = startOfNigerianDay(); // not the server clock, which is usually UTC in production
     const thirtyDaysAgo = new Date(Date.now() - 30 * DAY);
-    const [byStatus, todayPaid, monthPaid, rxPending, verifPending, proofPending, products, messages] = await Promise.all([
+    const [byStatus, todayPaid, monthPaid, rxPending, hospitalRxPending, verifPending, proofPending, products, messages] = await Promise.all([
       prisma.order.groupBy({ by: ["status"], _count: true }),
       prisma.order.aggregate({ where: { paidAt: { gte: startOfDay } }, _sum: { totalKobo: true }, _count: true }),
       prisma.order.aggregate({ where: { paidAt: { gte: thirtyDaysAgo } }, _sum: { totalKobo: true }, _count: true }),
       prisma.prescription.count({ where: { status: "PENDING" } }),
+      prisma.hospitalPrescription.count({ where: NEEDS_ACTION }),
       prisma.verification.count({ where: { status: "PENDING" } }),
       prisma.order.count({ where: { paymentStatus: "PROOF_SUBMITTED", status: "AWAITING_PAYMENT" } }),
       prisma.product.findMany({ where: { active: true }, include: { batches: true } }),
@@ -76,6 +80,7 @@ adminRouter.get(
       last30: seeOrders ? { revenueKobo: monthPaid._sum.totalKobo ?? 0, orders: monthPaid._count } : null,
       queues: {
         rxPending: can(role, "prescriptions.review") ? rxPending : null,
+        hospitalRxPending: can(role, "prescriptions.review") ? hospitalRxPending : null,
         verifPending: can(role, "verifications.review") ? verifPending : null,
         proofPending: can(role, "orders.manage") ? proofPending : null,
         lowStock: can(role, "inventory.manage") ? lowStock : null,
@@ -546,4 +551,5 @@ adminRouter.post(
 );
 
 /* ---------- Staff & roles (permission: staff.manage, enforced by ACCESS_RULES above) ---------- */
+adminRouter.use(hospitalAdminRouter);
 adminRouter.use(staffRouter);

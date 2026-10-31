@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { BadgeCheck, Boxes, ExternalLink, FileText, Gauge, Inbox, Package, Pill, ShieldCheck, Users } from "lucide-react";
+import { BadgeCheck, Boxes, ExternalLink, FileText, Gauge, Inbox, Package, Pill, ShieldCheck, Stethoscope, Users } from "lucide-react";
 import { can, type Permission, type User } from "@/lib/types";
 import { SignOutButton } from "@/components/layout/header";
 import { ROLE_LABEL } from "@/lib/roles";
@@ -11,6 +11,7 @@ import { ROLE_LABEL } from "@/lib/roles";
 const LINKS: { href: string; label: string; icon: typeof Gauge; permission: Permission }[] = [
   { href: "/admin", label: "Overview", icon: Gauge, permission: "dashboard.view" },
   { href: "/admin/orders", label: "Orders", icon: Package, permission: "orders.view" },
+  { href: "/admin/hospital", label: "Hospital prescriptions", icon: Stethoscope, permission: "prescriptions.review" },
   { href: "/admin/prescriptions", label: "Prescriptions", icon: FileText, permission: "prescriptions.review" },
   { href: "/admin/verifications", label: "Verifications", icon: BadgeCheck, permission: "verifications.review" },
   { href: "/admin/products", label: "Products", icon: Pill, permission: "products.manage" },

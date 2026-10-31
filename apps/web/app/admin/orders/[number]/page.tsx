@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, ExternalLink, FileText, Receipt } from "lucide-react";
+import { ChevronLeft, ExternalLink, FileText, Receipt, Stethoscope } from "lucide-react";
 import { apiGet } from "@/lib/server-api";
 import type { Order, OrderStatus } from "@/lib/types";
 import { formatDateTime, formatNaira, formatPhone, paymentMethodLabel } from "@/lib/format";
 import { OrderStatusPill, PaymentStatusPill, ReviewPill, RxBadge } from "@/components/badges";
 import { OrderAdminActions } from "./order-admin-actions";
+import { Alert } from "@/components/ui";
 import { LiveTracking } from "@/components/order/live-tracking";
 
 export const metadata: Metadata = { title: "Order" };
@@ -31,6 +32,13 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ num
           <PaymentStatusPill status={o.paymentStatus} />
         </div>
       </div>
+
+      {!!o.hospitalCancelled?.length && (
+        <Alert tone="error" title="Prescription changed by the doctor">
+          The doctor cancelled {o.hospitalCancelled.join(", ")} after this order was made. Check with the patient before handing it over, and cancel the
+          order if it is no longer needed.
+        </Alert>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <div className="space-y-6">
@@ -80,12 +88,28 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ num
               <h2 className="font-semibold">Customer</h2>
               <p className="mt-1 text-ink-soft">
                 {o.customer.firstName} {o.customer.lastName}
-                <br />
-                <a href={`mailto:${o.customer.email}`} className="hover:underline">{o.customer.email}</a>
-                <br />
-                <a href={`tel:${o.customer.phone}`} className="hover:underline">{formatPhone(o.customer.phone)}</a>
+                {o.customer.email && (
+                  <>
+                    <br />
+                    <a href={`mailto:${o.customer.email}`} className="hover:underline">{o.customer.email}</a>
+                  </>
+                )}
+                {o.customer.phone && (
+                  <>
+                    <br />
+                    <a href={`tel:${o.customer.phone}`} className="hover:underline">{formatPhone(o.customer.phone)}</a>
+                  </>
+                )}
               </p>
             </div>
+            {o.hospitalPrescriptionId && (
+              <div>
+                <h2 className="flex items-center gap-2 font-semibold"><Stethoscope className="h-4 w-4" aria-hidden /> MGK Care prescription</h2>
+                <Link href={`/admin/hospital/${o.hospitalPrescriptionId}`} className="mt-1 inline-block font-semibold text-brand-700 hover:underline">
+                  View prescription
+                </Link>
+              </div>
+            )}
             <div>
               <h2 className="font-semibold">{o.fulfilment === "PICKUP" ? "Store pickup" : "Deliver to"}</h2>
               {o.address && (

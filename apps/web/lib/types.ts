@@ -160,6 +160,10 @@ export type Order = {
   createdAt: string;
   paidAt: string | null;
   cancelledAt: string | null;
+  /** Staff only: set when the order supplies an MGK Care (hospital) prescription. */
+  hospitalPrescriptionId?: string | null;
+  /** Staff only: medicines on this order that the hospital doctor has since cancelled. */
+  hospitalCancelled?: string[];
 };
 
 export type Tracking = {
@@ -192,6 +196,51 @@ export type Prescription = {
   validUntil: string | null;
   expired: boolean;
   createdAt: string;
+};
+
+export type HospitalItemState = "WAITING" | "PREPARING" | "READY" | "DISPENSED" | "NOT_SUPPLIED" | "CANCELLED";
+
+/** A prescription sent by MGK Care, the hospital system. */
+export type HospitalPrescription = {
+  id: string;
+  patient: { firstName: string; lastName: string; mrn: string; phone: string | null; sex: string | null; age: number | null };
+  prescriberName: string;
+  clinic: string | null;
+  /** As recorded at the hospital; null when nothing was recorded. */
+  allergies: string | null;
+  hmo: string | null;
+  prescribedAt: string;
+  openCount: number;
+  alerts: string[];
+  items: {
+    id: string;
+    medicine: string;
+    dosage: string;
+    quantity: number | null;
+    quantityUnit: string | null;
+    quantityText: string | null;
+    cancelled: boolean;
+    open: boolean;
+    state: HospitalItemState;
+    reason?: string;
+    supplied: { name: string; packSize: string; quantity: number | null } | null;
+    orderNumber: string | null;
+    handledBy: string | null;
+  }[];
+};
+
+export type PickableProduct = {
+  id: string;
+  name: string;
+  genericName: string;
+  strength: string | null;
+  dosageForm: string;
+  packSize: string;
+  priceKobo: number;
+  rxStatus: RxStatus;
+  stock: number;
+  /** Suggestions only: the product's strength matches the prescription. */
+  strengthMatch?: boolean;
 };
 
 export type Verification = {

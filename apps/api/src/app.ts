@@ -1,10 +1,9 @@
-import crypto from "crypto";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./lib/env";
-import { attachUser, enforcePasswordChange } from "./lib/auth";
+import { attachUser, enforcePasswordChange, safeEqual } from "./lib/auth";
 import { errorHandler } from "./lib/errors";
 import { authRouter } from "./routes/auth";
 import { catalogRouter } from "./routes/catalog";
@@ -13,11 +12,7 @@ import { accountRouter } from "./routes/account";
 import { adminRouter } from "./routes/admin";
 import { contactRouter } from "./routes/contact";
 import { riderRouter } from "./routes/rider";
-
-function safeEqual(a: string, b: string) {
-  const x = Buffer.from(a), y = Buffer.from(b);
-  return x.length === y.length && crypto.timingSafeEqual(x, y);
-}
+import { hospitalRouter } from "./routes/hospital";
 
 export function createApp() {
   const app = express();
@@ -55,6 +50,7 @@ export function createApp() {
   app.use(accountRouter);
   app.use("/admin", adminRouter);
   app.use("/rider", riderRouter);
+  app.use("/hospital", hospitalRouter);
 
   app.use((_req, res) => res.status(404).json({ error: "Not found" }));
   app.use(errorHandler);

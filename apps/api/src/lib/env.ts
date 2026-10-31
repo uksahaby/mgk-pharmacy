@@ -35,6 +35,8 @@ export const env = {
     : null,
   /** Shared with the website, which forwards the visitor's real IP address alongside it (see clientIp in app.ts). */
   proxySecret: process.env.PROXY_SECRET ?? "",
+  /** Shared with MGK Care's pharmacy link service. Leave empty to switch off hospital prescriptions. */
+  hospitalApiKey: process.env.HOSPITAL_API_KEY ?? "",
 };
 
 if (env.isProd && (env.jwtSecret === "change-me" || env.jwtSecret.length < 32)) {
@@ -42,4 +44,7 @@ if (env.isProd && (env.jwtSecret === "change-me" || env.jwtSecret.length < 32)) 
 }
 if (env.isProd && !env.r2) {
   throw new Error("R2_BUCKET and the R2_* keys must be set in production: the server disk is not kept between deploys.");
+}
+if (env.hospitalApiKey && env.hospitalApiKey.length < 32) {
+  throw new Error("HOSPITAL_API_KEY must be a random value of 32+ characters.");
 }

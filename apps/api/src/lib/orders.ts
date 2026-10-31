@@ -14,6 +14,7 @@ export const orderInclude = {
   zone: true,
   prescription: true,
   rider: { select: { id: true, firstName: true, lastName: true, phone: true } },
+  hospitalItems: { select: { prescriptionId: true, medicine: true, status: true } },
 } satisfies Prisma.OrderInclude;
 
 type FullOrder = Order & {
@@ -22,6 +23,7 @@ type FullOrder = Order & {
   zone: ShippingZone | null;
   prescription: Prescription | null;
   rider?: { id: string; firstName: string; lastName: string; phone: string | null } | null;
+  hospitalItems?: { prescriptionId: string; medicine: string; status: string }[];
 };
 
 /** 4-digit code the customer gives the rider at the door, confirming the right person received the order. */
@@ -130,6 +132,13 @@ export function serializeOrder(o: FullOrder, opts: { staff?: boolean } = {}) {
         }
       : null,
     events: o.events.map((e) => ({ type: e.type, message: e.message, createdAt: e.createdAt, ...(opts.staff ? { actor: e.actor } : {}) })),
+    // Set when the order supplies an MGK Care (hospital) prescription.
+    hospitalPrescriptionId: opts.staff ? (o.hospitalItems?.[0]?.prescriptionId ?? null) : undefined,
+    // Medicines on this order that the hospital doctor has since cancelled.
+    hospitalCancelled:
+      opts.staff && !["CANCELLED", "COMPLETED"].includes(o.status)
+        ? (o.hospitalItems ?? []).filter((i) => i.status === "CANCELLED").map((i) => i.medicine)
+        : undefined,
     canCancel,
     canPayOnline: o.status === "AWAITING_PAYMENT" && o.paymentStatus !== "PAID" && !!env.paystackSecret,
     bankDetails: showBankDetails ? env.bank : null,
@@ -156,6 +165,7 @@ export function serializeOrder(o: FullOrder, opts: { staff?: boolean } = {}) {
 }
 
 export async function notifyOrder(order: Order, subject: string, body: string) {
+  if (!order.email) return; // hospital patients may not have an email address
   await sendMail({
     to: order.email,
     subject: `${subject} · Order ${order.number}`,
