@@ -125,7 +125,7 @@ Doctors at MGK Health Care prescribe in MGK Care (the `mgk-care` project). Its p
 
 - **Queue** (`/admin/hospital`, pharmacists and admins): visits with medicines still to supply, or with a change to check. Search by name or hospital number (MRN).
 - **Prescription page:**
-  - patient details, the prescriber and clinic, allergies recorded at the hospital (or a warning that none were recorded), and the patient's HMO
+  - patient details, the prescriber and clinic, allergies recorded at the hospital (or a warning that none were recorded), the patient's HMO, latest weight, and pregnancy (with weeks and how the hospital knows)
   - for each medicine, choose a product (the same ingredient, in stock first, then matching strength are suggested) or search the catalogue, and set the number of packs
   - or mark a medicine as not supplied with a reason (out of stock, patient declined, …), or leave it for later
 - **Supplying** creates a normal pickup order (pay at pickup) from first-expiring stock. From there it works like any pickup order: ready for pickup, then collected, which records the payment. Orders without an email address send no emails.

@@ -93,6 +93,10 @@ export function serializeForStaff(p: FullHospitalPrescription) {
     clinic: p.clinic,
     allergies: p.allergies,
     hmo: p.hmo,
+    pregnancy: p.pregnancyStatus
+      ? { status: p.pregnancyStatus, weeks: p.pregnancyWeeks, basis: p.pregnancyBasis, recordedAt: p.pregnancyRecordedAt }
+      : null,
+    weight: p.weightKg !== null ? { kg: p.weightKg, recordedAt: p.weightRecordedAt } : null,
     prescribedAt: p.prescribedAt,
     openCount: p.items.filter(isOpen).length,
     alerts: p.items

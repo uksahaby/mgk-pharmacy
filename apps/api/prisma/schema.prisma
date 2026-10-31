@@ -242,22 +242,29 @@ model OrderEvent {
  * The hospital decides what was prescribed; the pharmacy decides what to supply against it.
  */
 model HospitalPrescription {
-  id               String                     @id @default(cuid())
-  visitId          String                     @unique // MGK Care's id for the visit
-  patientMrn       String
-  firstName        String
-  lastName         String
-  phone            String?
-  sex              String?
-  birthDate        String? // YYYY-MM-DD
-  prescriberName   String
-  clinic           String?
-  allergies        String? // as recorded at the hospital; null when nothing was recorded
-  hmo              String?
-  prescribedAt     DateTime
-  createdAt        DateTime                   @default(now())
-  updatedAt        DateTime                   @updatedAt
-  items            HospitalPrescriptionItem[]
+  id                   String                     @id @default(cuid())
+  visitId              String                     @unique // MGK Care's id for the visit
+  patientMrn           String
+  firstName            String
+  lastName             String
+  phone                String?
+  sex                  String?
+  birthDate            String?                    // YYYY-MM-DD
+  prescriberName       String
+  clinic               String?
+  allergies            String?                    // as recorded at the hospital; null when nothing was recorded
+  hmo                  String?
+  // Null when the patient can't be pregnant or nothing was known either way.
+  pregnancyStatus      String?                    // PREGNANT | NOT_PREGNANT
+  pregnancyWeeks       Int?
+  pregnancyBasis       String?                    // how the hospital knows, e.g. "Recorded at the hospital"
+  pregnancyRecordedAt  DateTime?
+  weightKg             Float?
+  weightRecordedAt     DateTime?
+  prescribedAt         DateTime
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  items                HospitalPrescriptionItem[]
 
   @@index([updatedAt])
 }

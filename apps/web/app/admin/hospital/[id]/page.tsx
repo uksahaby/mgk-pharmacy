@@ -4,10 +4,10 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { apiGet } from "@/lib/server-api";
 import type { HospitalPrescription, PickableProduct } from "@/lib/types";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { HospitalItemPill } from "@/components/badges";
 import { Alert } from "@/components/ui";
-import { hasAllergies, patientLine, prescribedQuantity } from "../patient";
+import { hasAllergies, patientLine, pregnancyText, prescribedQuantity, weightText } from "../patient";
 import { SupplyForm } from "./supply-form";
 
 export const metadata: Metadata = { title: "Hospital prescription" };
@@ -31,6 +31,7 @@ export default async function HospitalPrescriptionPage({ params }: { params: Pro
         <div>
           <h1 className="font-display text-2xl font-bold">{p.patient.firstName} {p.patient.lastName}</h1>
           <p className="text-sm text-ink-muted">{patientLine(p)}</p>
+          {p.weight && <p className="text-sm text-ink-muted">Weight {weightText(p.weight)}</p>}
         </div>
         <div className="text-right text-sm text-ink-muted">
           <p className="font-medium text-ink-soft">{p.prescriberName}{p.clinic ? ` · ${p.clinic}` : ""}</p>
@@ -45,6 +46,16 @@ export default async function HospitalPrescriptionPage({ params }: { params: Pro
           <Alert tone="success" title="Allergies">{p.allergies}</Alert>
         ) : (
           <Alert tone="warning" title="Allergies">None recorded at the hospital. Ask the patient.</Alert>
+        )}
+        {p.pregnancy?.status === "PREGNANT" && (
+          <Alert tone="warning" title={pregnancyText(p.pregnancy)}>
+            {[p.pregnancy.basis, p.pregnancy.recordedAt && formatDate(p.pregnancy.recordedAt)].filter(Boolean).join(", ")}. Check each medicine is safe in pregnancy.
+          </Alert>
+        )}
+        {p.pregnancy?.status === "NOT_PREGNANT" && (
+          <Alert tone="info" title="Not pregnant">
+            {[p.pregnancy.basis, p.pregnancy.recordedAt && formatDate(p.pregnancy.recordedAt)].filter(Boolean).join(", ")}.
+          </Alert>
         )}
         {p.hmo && (
           <Alert tone="info" title={`HMO: ${p.hmo}`}>

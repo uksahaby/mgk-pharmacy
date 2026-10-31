@@ -35,6 +35,19 @@ const prescriptionSchema = z.object({
   clinic: optionalText(120),
   allergies: optionalText(500),
   hmo: optionalText(120),
+  pregnancy: z
+    .object({
+      status: z.enum(["PREGNANT", "NOT_PREGNANT"]),
+      weeks: z.number().int().min(0).max(45).nullish().transform((v) => v ?? null),
+      basis: z.string().trim().max(120),
+      recordedAt: z.coerce.date(),
+    })
+    .nullish()
+    .transform((v) => v ?? null),
+  weight: z
+    .object({ kg: z.number().positive().max(400), recordedAt: z.coerce.date() })
+    .nullish()
+    .transform((v) => v ?? null),
   prescribedAt: z.coerce.date(),
   items: z
     .array(
@@ -76,6 +89,12 @@ hospitalRouter.put(
       clinic: body.clinic,
       allergies: body.allergies,
       hmo: body.hmo,
+      pregnancyStatus: body.pregnancy?.status ?? null,
+      pregnancyWeeks: body.pregnancy?.weeks ?? null,
+      pregnancyBasis: body.pregnancy?.basis ?? null,
+      pregnancyRecordedAt: body.pregnancy?.recordedAt ?? null,
+      weightKg: body.weight?.kg ?? null,
+      weightRecordedAt: body.weight?.recordedAt ?? null,
       prescribedAt: body.prescribedAt,
     };
 

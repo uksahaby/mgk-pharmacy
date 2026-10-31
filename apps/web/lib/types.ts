@@ -209,6 +209,8 @@ export type HospitalPrescription = {
   /** As recorded at the hospital; null when nothing was recorded. */
   allergies: string | null;
   hmo: string | null;
+  pregnancy: { status: "PREGNANT" | "NOT_PREGNANT"; weeks: number | null; basis: string | null; recordedAt: string | null } | null;
+  weight: { kg: number; recordedAt: string | null } | null;
   prescribedAt: string;
   openCount: number;
   alerts: string[];

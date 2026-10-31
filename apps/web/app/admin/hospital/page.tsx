@@ -63,6 +63,7 @@ export default async function HospitalPrescriptions({ searchParams }: { searchPa
                   <p className="text-xs">{formatDateTime(p.prescribedAt)}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
+                  {p.pregnancy?.status === "PREGNANT" && <span className="chip bg-pink-100 text-pink-800">Pregnant</span>}
                   {p.hmo && <span className="chip bg-violet-100 text-violet-800">HMO</span>}
                   {p.alerts.length > 0 && (
                     <span className="chip bg-brand-100 text-brand-800"><AlertTriangle className="h-3 w-3" aria-hidden /> Changed</span>
