@@ -123,6 +123,8 @@ export type Order = {
   paymentMethod: "PAYSTACK" | "BANK_TRANSFER" | "PAY_ON_PICKUP";
   paymentStatus: PaymentStatus;
   paymentRef: string | null;
+  /** Pay-at-pickup orders: how the customer paid at the counter. */
+  paidWith: "CASH" | "POS" | "TRANSFER" | null;
   hasProof: boolean;
   fulfilment: "DELIVERY" | "PICKUP";
   customer: { firstName: string; lastName: string; email: string; phone: string };

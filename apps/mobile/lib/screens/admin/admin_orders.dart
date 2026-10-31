@@ -156,7 +156,7 @@ class _AdminOrderScreenState extends State<AdminOrderScreen> {
                     if (o.address != null) Text('${o.address!['line1']}${o.address!['line2'] != null ? ', ${o.address!['line2']}' : ''}\n${o.address!['city']}, ${o.address!['state']}${o.address!['landmark'] != null ? '\nLandmark: ${o.address!['landmark']}' : ''}', style: const TextStyle(height: 1.5)),
                     const Divider(height: 18),
                     const Text('Payment', style: TextStyle(fontWeight: FontWeight.w800)),
-                    Text('${paymentMethodLabel[o.paymentMethod]}${o.paymentRef != null ? ' · ref ${o.paymentRef}' : ''}'),
+                    Text('${paymentMethodLabel[o.paymentMethod]}${o.paidWith != null ? ' · paid by ${paidWithLabel[o.paidWith]!.toLowerCase()}' : ''}${o.paymentRef != null ? ' · ref ${o.paymentRef}' : ''}'),
                     if (o.hasProof)
                       TextButton.icon(
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
@@ -208,6 +208,7 @@ class _ActionsState extends State<_Actions> {
   final _note = TextEditingController(), _reference = TextEditingController();
   List<Json> _riders = [];
   String? _riderId;
+  String? _paidWith;
   bool _busy = false;
 
   @override
@@ -229,7 +230,11 @@ class _ActionsState extends State<_Actions> {
   Widget build(BuildContext context) {
     final o = widget.order;
     final canMarkPaid = o.status == 'AWAITING_PAYMENT' && o.paymentStatus != 'PAID';
-    final forward = widget.allowed.where((s) => s != 'CANCELLED' && !(o.status == 'AWAITING_PAYMENT' && s == 'PROCESSING')).toList();
+    // Pay-at-pickup orders are paid at the counter; staff record how before handing the order over.
+    final canTakePayment = o.paymentMethod == 'PAY_ON_PICKUP' && o.paymentStatus != 'PAID' && (o.status == 'PROCESSING' || o.status == 'READY_FOR_PICKUP');
+    final forward = widget.allowed
+        .where((s) => s != 'CANCELLED' && !(o.status == 'AWAITING_PAYMENT' && s == 'PROCESSING') && !(s == 'COMPLETED' && o.paymentStatus != 'PAID'))
+        .toList();
     return CardBox(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const Text('Actions', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
@@ -243,6 +248,27 @@ class _ActionsState extends State<_Actions> {
             style: FilledButton.styleFrom(backgroundColor: AppColors.care600),
             onPressed: _busy ? null : () => _run(() => api.post('/admin/orders/${o.number}/mark-paid', {if (_reference.text.trim().isNotEmpty) 'reference': _reference.text.trim()}), 'Payment confirmed'),
             child: const Text('Confirm payment received'),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (canTakePayment) ...[
+          AlertBox(tone: AlertTone.warning, message: 'Take payment: ${naira(o.totalKobo)}'),
+          const SizedBox(height: 8),
+          Wrap(spacing: 6, children: [
+            for (final m in paidWithLabel.keys)
+              ChoiceChip(label: Text(paidWithLabel[m]!), selected: _paidWith == m, onSelected: (_) => setState(() => _paidWith = m)),
+          ]),
+          if (_paidWith != null && _paidWith != 'CASH') ...[
+            const SizedBox(height: 8),
+            TextField(controller: _reference, decoration: InputDecoration(labelText: _paidWith == 'POS' ? 'POS slip number (optional)' : 'Transfer reference (optional)')),
+          ],
+          const SizedBox(height: 8),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.care600),
+            onPressed: _busy || _paidWith == null
+                ? null
+                : () => _run(() => api.post('/admin/orders/${o.number}/mark-paid', {'method': _paidWith, if (_reference.text.trim().isNotEmpty) 'reference': _reference.text.trim()}), 'Payment recorded'),
+            child: const Text('Payment received'),
           ),
           const SizedBox(height: 12),
         ],
@@ -294,7 +320,7 @@ class _ActionsState extends State<_Actions> {
                   },
             child: const Text('Cancel order', style: TextStyle(color: AppColors.brand700)),
           ),
-        if (!canMarkPaid && forward.isEmpty && !widget.allowed.contains('CANCELLED') && o.paymentStatus != 'REFUND_PENDING') const Text('No further actions for this order.', style: TextStyle(color: AppColors.inkMuted)),
+        if (!canMarkPaid && !canTakePayment && forward.isEmpty && !widget.allowed.contains('CANCELLED') && o.paymentStatus != 'REFUND_PENDING') const Text('No further actions for this order.', style: TextStyle(color: AppColors.inkMuted)),
         if (o.status == 'AWAITING_RX_REVIEW') const Text('Approve or reject the prescription to move this order forward.', style: TextStyle(fontSize: 12, color: AppColors.inkMuted)),
       ]),
     );

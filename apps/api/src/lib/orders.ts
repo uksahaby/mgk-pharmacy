@@ -4,7 +4,9 @@ import { prisma } from "./prisma";
 import { env } from "./env";
 import { badRequest } from "./errors";
 import { sendMail } from "./mailer";
-import { CUSTOMER_CANCELLABLE, type OrderStatus } from "./constants";
+import { CUSTOMER_CANCELLABLE, type CounterPaymentMethod, type OrderStatus } from "./constants";
+
+export const COUNTER_PAYMENT_LABEL: Record<CounterPaymentMethod, string> = { CASH: "cash", POS: "POS (card)", TRANSFER: "bank transfer" };
 
 type Tx = Prisma.TransactionClient;
 
@@ -100,6 +102,7 @@ export function serializeOrder(o: FullOrder, opts: { staff?: boolean } = {}) {
     paymentMethod: o.paymentMethod,
     paymentStatus: o.paymentStatus,
     paymentRef: o.paymentRef,
+    paidWith: o.paidWith,
     hasProof: !!o.proofFilePath,
     fulfilment: o.fulfilment,
     customer: { firstName: o.firstName, lastName: o.lastName, email: o.email, phone: o.phone },
@@ -173,8 +176,11 @@ export async function notifyOrder(order: Order, subject: string, body: string) {
   });
 }
 
-/** Marks an order paid exactly once and moves it into processing. Safe to call repeatedly. */
-export async function markOrderPaid(orderId: string, reference: string | null, actor: string) {
+/**
+ * Marks an order paid exactly once and moves an order awaiting payment into processing. Safe to call repeatedly.
+ * `paidWith` is set for pay-at-pickup orders paid at the counter.
+ */
+export async function markOrderPaid(orderId: string, reference: string | null, actor: string, paidWith?: CounterPaymentMethod) {
   const updated = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
     if (order.paymentStatus === "PAID" || order.status === "CANCELLED") return null;
@@ -184,13 +190,18 @@ export async function markOrderPaid(orderId: string, reference: string | null, a
         paymentStatus: "PAID",
         paidAt: new Date(),
         paymentRef: reference ?? order.paymentRef,
+        ...(paidWith ? { paidWith } : {}),
         status: order.status === "AWAITING_PAYMENT" ? "PROCESSING" : order.status,
       },
     });
-    await addEvent(tx, orderId, "PAID", "Payment confirmed. Our pharmacists are preparing your order.", actor);
+    const message = paidWith
+      ? `Paid at the pharmacy by ${COUNTER_PAYMENT_LABEL[paidWith]}.`
+      : "Payment confirmed. Our pharmacists are preparing your order.";
+    await addEvent(tx, orderId, "PAID", message, actor);
     return next;
   });
-  if (updated) await notifyOrder(updated, "Payment received", "We've received your payment and our pharmacists are now preparing your order.");
+  // A customer paying at the counter is standing there; no email needed.
+  if (updated && !paidWith) await notifyOrder(updated, "Payment received", "We've received your payment and our pharmacists are now preparing your order.");
   return updated;
 }
 

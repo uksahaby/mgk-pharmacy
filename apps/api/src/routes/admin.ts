@@ -8,7 +8,7 @@ import { addEvent, cancelOrder, markOrderPaid, newDeliveryCode, notifyOrder, ord
 import { sendPrivateFile } from "../lib/uploads";
 import { sendMail } from "../lib/mailer";
 import { startOfNigerianDay } from "../lib/time";
-import { can, ORDER_STATUS, STAFF_TRANSITIONS, type OrderStatus, type Permission } from "../lib/constants";
+import { can, COUNTER_PAYMENT_METHODS, ORDER_STATUS, STAFF_TRANSITIONS, type OrderStatus, type Permission } from "../lib/constants";
 import { serializePrescription, serializeVerification } from "./account";
 import { staffRouter } from "./staff";
 import { hospitalAdminRouter } from "./hospital-admin";
@@ -171,6 +171,9 @@ adminRouter.post(
     if (status === "PROCESSING" && order.paymentMethod !== "PAY_ON_PICKUP" && order.paymentStatus !== "PAID") {
       throw badRequest("Confirm payment before moving this order to processing.");
     }
+    if (status === "COMPLETED" && order.paymentStatus !== "PAID") {
+      throw badRequest("Record how the customer paid (cash, POS or transfer) before marking the order collected.");
+    }
     if (status === "READY_FOR_PICKUP" && order.fulfilment !== "PICKUP") throw badRequest("This is a delivery order.");
     if (status === "DISPATCHED" && order.fulfilment !== "DELIVERY") throw badRequest("This is a pickup order.");
 
@@ -194,7 +197,7 @@ adminRouter.post(
       data: {
         status,
         ...(status === "DELIVERED" ? { deliveredAt: new Date() } : {}),
-        ...(status === "COMPLETED" && order.paymentMethod === "PAY_ON_PICKUP" ? { paymentStatus: "PAID", paidAt: new Date() } : {}),
+        ...(status === "COMPLETED" ? { collectedAt: new Date() } : {}),
       },
     });
     if (status === "DELIVERED") await prisma.riderLocation.deleteMany({ where: { orderId: order.id } });
@@ -207,11 +210,17 @@ adminRouter.post(
 adminRouter.post(
   "/orders/:number/mark-paid",
   ah(async (req, res) => {
-    const { reference } = z.object({ reference: z.string().trim().max(80).optional() }).parse(req.body ?? {});
+    const { reference, method } = z
+      .object({ reference: z.string().trim().max(80).optional(), method: z.enum(COUNTER_PAYMENT_METHODS).optional() })
+      .parse(req.body ?? {});
     const order = await prisma.order.findUnique({ where: { number: req.params.number } });
     if (!order) throw notFound("Order");
-    if (order.status !== "AWAITING_PAYMENT") throw badRequest("Only orders awaiting payment can be marked as paid.");
-    await markOrderPaid(order.id, reference ?? null, actorOf(req));
+    // Pay-at-pickup orders are paid at the counter, while being prepared or once ready; staff say how.
+    const atCounter =
+      order.paymentMethod === "PAY_ON_PICKUP" && order.paymentStatus !== "PAID" && ["PROCESSING", "READY_FOR_PICKUP"].includes(order.status);
+    if (atCounter && !method) throw badRequest("Choose how the customer paid: cash, POS or transfer.");
+    if (!atCounter && order.status !== "AWAITING_PAYMENT") throw badRequest("This order isn't waiting for a payment.");
+    await markOrderPaid(order.id, reference ?? null, actorOf(req), atCounter ? method : undefined);
     res.json({ ok: true });
   }),
 );

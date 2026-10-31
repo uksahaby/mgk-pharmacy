@@ -82,6 +82,7 @@ Every product that needs a pharmacist's check is listed in `apps/api/prisma/data
   - filters and search
   - confirm transfers, which moves the order to processing
   - status changes that respect delivery versus pickup
+  - pay-at-pickup orders: staff record how the customer paid at the counter (cash, POS or bank transfer, with an optional slip or transfer reference) before the order can be marked collected
   - cancel with automatic restocking, and mark refunds done
 - **Prescription review** with inline file preview, approve (with validity period) or reject (with reason). Linked orders move forward automatically.
 - **Identity verification** review.
@@ -128,7 +129,7 @@ Doctors at MGK Health Care prescribe in MGK Care (the `mgk-care` project). Its p
   - patient details, the prescriber and clinic, allergies recorded at the hospital (or a warning that none were recorded), the patient's HMO, latest weight, and pregnancy (with weeks and how the hospital knows)
   - for each medicine, choose a product (the same ingredient, in stock first, then matching strength are suggested) or search the catalogue, and set the number of packs
   - or mark a medicine as not supplied with a reason (out of stock, patient declined, …), or leave it for later
-- **Supplying** creates a normal pickup order (pay at pickup) from first-expiring stock. From there it works like any pickup order: ready for pickup, then collected, which records the payment. Orders without an email address send no emails.
+- **Supplying** creates a normal pickup order (pay at pickup) from first-expiring stock. From there it works like any pickup order: ready for pickup, take payment (cash, POS or transfer), then collected. MGK Care sees how it was paid. Orders without an email address send no emails.
 - **Changes from the doctor:** a medicine the doctor cancels before it is supplied disappears from the list. One cancelled after it was put on an order raises a warning on the prescription and on the order page.
 - **Hospital API** (`/hospital/*`, `apps/api/src/routes/hospital.ts`): `PUT /hospital/prescriptions/:visitId` creates or updates a visit's prescription, and `GET /hospital/prescriptions/updates?since=` lists what changed. It is authenticated with a shared key (`HOSPITAL_API_KEY`, 32+ random characters, the same value as `PHARMACY_API_KEY` in MGK Care). Without the key set, the endpoints are switched off.
 

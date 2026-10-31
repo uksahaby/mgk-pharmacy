@@ -52,6 +52,9 @@ const paymentMethodLabel = {
   'PAY_ON_PICKUP': 'Pay at pickup',
 };
 
+/// How a pay-at-pickup order was paid at the counter.
+const paidWithLabel = {'CASH': 'Cash', 'POS': 'POS (card)', 'TRANSFER': 'Bank transfer'};
+
 const rxLabel = {'OTC': 'Over the counter', 'POM': 'Prescription only', 'CONTROLLED': 'Controlled medicine'};
 
 const idTypeLabel = {

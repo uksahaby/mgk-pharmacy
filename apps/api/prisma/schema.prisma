@@ -177,6 +177,7 @@ model Order {
   paymentMethod  String // PAYSTACK | BANK_TRANSFER | PAY_ON_PICKUP
   paymentStatus  String        @default("UNPAID") // UNPAID | PROOF_SUBMITTED | PAID | REFUND_PENDING | REFUNDED
   paymentRef     String?
+  paidWith       String? // pay-at-pickup orders: CASH | POS | TRANSFER, chosen by staff at the counter
   proofFilePath  String?
   fulfilment     String // DELIVERY | PICKUP
   zoneId         String?
@@ -192,6 +193,7 @@ model Order {
   deliveryCode   String?
   dispatchedAt   DateTime?
   deliveredAt    DateTime?
+  collectedAt    DateTime? // pickup orders: when the customer collected
   subtotalKobo   Int
   shippingKobo   Int
   totalKobo      Int

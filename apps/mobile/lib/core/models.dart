@@ -155,6 +155,7 @@ class Order {
   String get paymentMethod => j['paymentMethod'] as String;
   String get paymentStatus => j['paymentStatus'] as String;
   String? get paymentRef => j['paymentRef'] as String?;
+  String? get paidWith => j['paidWith'] as String?;
   bool get hasProof => j['hasProof'] == true;
   String get fulfilment => j['fulfilment'] as String;
   bool get isDelivery => fulfilment == 'DELIVERY';

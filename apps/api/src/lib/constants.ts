@@ -71,6 +71,10 @@ export const STAFF_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 export const PAYMENT_METHODS = ["PAYSTACK", "BANK_TRANSFER", "PAY_ON_PICKUP"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
+/** How a pay-at-pickup order was paid at the counter. Staff record it before handing the order over. */
+export const COUNTER_PAYMENT_METHODS = ["CASH", "POS", "TRANSFER"] as const;
+export type CounterPaymentMethod = (typeof COUNTER_PAYMENT_METHODS)[number];
+
 export const NIGERIAN_STATES = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River",
   "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT - Abuja", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano",

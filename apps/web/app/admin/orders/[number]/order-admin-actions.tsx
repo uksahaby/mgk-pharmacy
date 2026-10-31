@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/client-api";
 import { useSubmit } from "@/components/form";
 import { Alert } from "@/components/ui";
-import { orderStatusLabel } from "@/lib/format";
+import { formatNaira, orderStatusLabel, paidWithLabel } from "@/lib/format";
 import type { Order, OrderStatus } from "@/lib/types";
 
 export function OrderAdminActions({ order, allowed }: { order: Order; allowed: OrderStatus[] }) {
@@ -14,6 +14,7 @@ export function OrderAdminActions({ order, allowed }: { order: Order; allowed: O
   const [reference, setReference] = useState("");
   const [riders, setRiders] = useState<{ id: string; name: string; activeDeliveries: number }[]>([]);
   const [riderId, setRiderId] = useState("");
+  const [paidWith, setPaidWith] = useState<keyof typeof paidWithLabel | "">("");
   const { pending, error, run } = useSubmit();
 
   useEffect(() => {
@@ -27,13 +28,19 @@ export function OrderAdminActions({ order, allowed }: { order: Order; allowed: O
     const ok = await run(fn);
     if (ok) {
       setNote("");
+      setReference("");
       router.refresh();
     }
   };
 
   const canMarkPaid = order.status === "AWAITING_PAYMENT" && order.paymentStatus !== "PAID";
-  // Unpaid orders move forward via "Confirm payment received", not a manual status change.
-  const forward = allowed.filter((s) => s !== "CANCELLED" && !(order.status === "AWAITING_PAYMENT" && s === "PROCESSING"));
+  // Pay-at-pickup orders are paid at the counter; staff record how before handing the order over.
+  const canTakePayment =
+    order.paymentMethod === "PAY_ON_PICKUP" && order.paymentStatus !== "PAID" && ["PROCESSING", "READY_FOR_PICKUP"].includes(order.status);
+  // Unpaid orders move forward via a payment action, not a manual status change.
+  const forward = allowed.filter(
+    (s) => s !== "CANCELLED" && !(order.status === "AWAITING_PAYMENT" && s === "PROCESSING") && !(s === "COMPLETED" && order.paymentStatus !== "PAID"),
+  );
 
   return (
     <section className="card space-y-4 p-5">
@@ -49,6 +56,37 @@ export function OrderAdminActions({ order, allowed }: { order: Order; allowed: O
           <button className="btn-care w-full" disabled={pending} onClick={() => act(() => api(`/admin/orders/${order.number}/mark-paid`, { json: { reference: reference || undefined } }))}>
             Confirm payment received
           </button>
+        </div>
+      )}
+
+      {canTakePayment && (
+        <div className="space-y-2 rounded-xl bg-orange-50 p-3">
+          <p className="text-sm font-medium">Take payment: {formatNaira(order.totalKobo)}</p>
+          <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="How the customer paid">
+            {(Object.keys(paidWithLabel) as (keyof typeof paidWithLabel)[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={paidWith === m}
+                onClick={() => setPaidWith(m)}
+                className={`rounded-lg px-2 py-2 text-sm font-medium ring-1 ${paidWith === m ? "bg-white text-ink ring-brand-400" : "bg-white/60 text-ink-soft ring-slate-200 hover:ring-slate-300"}`}
+              >
+                {paidWithLabel[m]}
+              </button>
+            ))}
+          </div>
+          {paidWith && paidWith !== "CASH" && (
+            <input className="input" placeholder={paidWith === "POS" ? "POS slip number (optional)" : "Transfer reference (optional)"} value={reference} onChange={(e) => setReference(e.target.value)} />
+          )}
+          <button
+            className="btn-care w-full"
+            disabled={pending || !paidWith}
+            onClick={() => act(() => api(`/admin/orders/${order.number}/mark-paid`, { json: { method: paidWith, reference: reference || undefined } }))}
+          >
+            Payment received
+          </button>
+          {allowed.includes("COMPLETED") && <p className="text-xs text-ink-muted">Record the payment, then mark the order collected.</p>}
         </div>
       )}
 
@@ -103,7 +141,7 @@ export function OrderAdminActions({ order, allowed }: { order: Order; allowed: O
         </button>
       )}
 
-      {!canMarkPaid && forward.length === 0 && !allowed.includes("CANCELLED") && order.paymentStatus !== "REFUND_PENDING" && (
+      {!canMarkPaid && !canTakePayment && forward.length === 0 && !allowed.includes("CANCELLED") && order.paymentStatus !== "REFUND_PENDING" && (
         <p className="text-sm text-ink-muted">No further actions for this order.</p>
       )}
       {order.status === "AWAITING_RX_REVIEW" && <p className="text-xs text-ink-muted">Approve or reject the prescription to move this order forward.</p>}

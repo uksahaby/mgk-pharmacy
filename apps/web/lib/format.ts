@@ -53,6 +53,9 @@ export const paymentMethodLabel = {
   PAY_ON_PICKUP: "Pay at pickup",
 } as const;
 
+/** How a pay-at-pickup order was paid at the counter. */
+export const paidWithLabel = { CASH: "Cash", POS: "POS (card)", TRANSFER: "Bank transfer" } as const;
+
 export const idTypeLabel: Record<string, string> = {
   NIN: "National ID (NIN slip or card)",
   DRIVERS_LICENCE: "Driver's licence",

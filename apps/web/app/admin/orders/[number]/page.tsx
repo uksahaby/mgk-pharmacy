@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, ExternalLink, FileText, Receipt, Stethoscope } from "lucide-react";
 import { apiGet } from "@/lib/server-api";
 import type { Order, OrderStatus } from "@/lib/types";
-import { formatDateTime, formatNaira, formatPhone, paymentMethodLabel } from "@/lib/format";
+import { formatDateTime, formatNaira, formatPhone, paidWithLabel, paymentMethodLabel } from "@/lib/format";
 import { OrderStatusPill, PaymentStatusPill, ReviewPill, RxBadge } from "@/components/badges";
 import { OrderAdminActions } from "./order-admin-actions";
 import { Alert } from "@/components/ui";
@@ -122,7 +122,11 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ num
             </div>
             <div>
               <h2 className="font-semibold">Payment</h2>
-              <p className="mt-1 text-ink-soft">{paymentMethodLabel[o.paymentMethod]}{o.paymentRef ? ` · ref ${o.paymentRef}` : ""}</p>
+              <p className="mt-1 text-ink-soft">
+                {paymentMethodLabel[o.paymentMethod]}
+                {o.paidWith ? ` · paid by ${paidWithLabel[o.paidWith].toLowerCase()}` : ""}
+                {o.paymentRef ? ` · ref ${o.paymentRef}` : ""}
+              </p>
               {o.hasProof && (
                 <a href={`/api/admin/orders/${o.number}/payment-proof`} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1.5 font-semibold text-brand-700 hover:underline">
                   <Receipt className="h-4 w-4" aria-hidden /> View transfer receipt <ExternalLink className="h-3 w-3" />

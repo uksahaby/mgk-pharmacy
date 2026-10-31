@@ -36,7 +36,7 @@ export const NEEDS_ACTION: Prisma.HospitalPrescriptionWhereInput = { items: { so
  */
 export function itemState(i: HospitalItem): { state: string; reason?: string; at?: Date } {
   if (i.order) {
-    if (i.order.status === "COMPLETED") return { state: "DISPENSED", at: i.order.paidAt ?? i.order.updatedAt };
+    if (i.order.status === "COMPLETED") return { state: "DISPENSED", at: i.order.collectedAt ?? i.order.updatedAt };
     if (i.order.status === "CANCELLED") return { state: "NOT_SUPPLIED", reason: "The pharmacy order was cancelled", at: i.order.cancelledAt ?? undefined };
     return { state: i.order.status === "READY_FOR_PICKUP" ? "READY" : "PREPARING" };
   }
@@ -64,6 +64,7 @@ export function serializeForHospital(p: FullHospitalPrescription) {
         quantity: i.orderId ? i.supplyQuantity : null,
         orderNumber: i.order?.number ?? null,
         paid: i.order?.paymentStatus === "PAID",
+        paidWith: i.order?.paidWith ?? null,
       };
     }),
   };
