@@ -90,7 +90,7 @@ Every product that needs a pharmacist's check is listed in `apps/api/prisma/data
   - create and edit
   - dispensing class, cold chain, featured, visibility
 - **Stock batches** with expiry dates. Sales draw from the earliest-expiring batch first (FEFO). Batches can be quarantined or recalled.
-- **Inventory:** low-stock and expiring-batch reports.
+- **Inventory:** low-stock and expiring-batch reports, and a stock list and batch list to download for Excel.
 - **Customers and contact messages.**
 
 ### Staff, roles & permissions (`/admin/staff`, administrators only)

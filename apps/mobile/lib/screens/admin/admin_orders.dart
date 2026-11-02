@@ -156,7 +156,7 @@ class _AdminOrderScreenState extends State<AdminOrderScreen> {
                     if (o.address != null) Text('${o.address!['line1']}${o.address!['line2'] != null ? ', ${o.address!['line2']}' : ''}\n${o.address!['city']}, ${o.address!['state']}${o.address!['landmark'] != null ? '\nLandmark: ${o.address!['landmark']}' : ''}', style: const TextStyle(height: 1.5)),
                     const Divider(height: 18),
                     const Text('Payment', style: TextStyle(fontWeight: FontWeight.w800)),
-                    Text('${paymentMethodLabel[o.paymentMethod]}${o.paidWith != null ? ' · paid by ${paidWithLabel[o.paidWith]!.toLowerCase()}' : ''}${o.paymentRef != null ? ' · ref ${o.paymentRef}' : ''}'),
+                    Text('${paymentMethodLabel[o.paymentMethod]}${o.paidWith != null ? ' · paid by ${paidWithPhrase[o.paidWith]}' : ''}${o.paymentRef != null ? ' · ref ${o.paymentRef}' : ''}'),
                     if (o.hasProof)
                       TextButton.icon(
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),

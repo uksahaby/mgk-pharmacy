@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, ExternalLink, FileText, Receipt, Stethoscope } from "lucide-react";
 import { apiGet } from "@/lib/server-api";
 import type { Order, OrderStatus } from "@/lib/types";
-import { formatDateTime, formatNaira, formatPhone, paidWithLabel, paymentMethodLabel } from "@/lib/format";
+import { formatDateTime, formatNaira, formatPhone, paidWithPhrase, paymentMethodLabel } from "@/lib/format";
 import { OrderStatusPill, PaymentStatusPill, ReviewPill, RxBadge } from "@/components/badges";
 import { OrderAdminActions } from "./order-admin-actions";
 import { Alert } from "@/components/ui";
@@ -124,7 +124,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ num
               <h2 className="font-semibold">Payment</h2>
               <p className="mt-1 text-ink-soft">
                 {paymentMethodLabel[o.paymentMethod]}
-                {o.paidWith ? ` · paid by ${paidWithLabel[o.paidWith].toLowerCase()}` : ""}
+                {o.paidWith ? ` · paid by ${paidWithPhrase[o.paidWith]}` : ""}
                 {o.paymentRef ? ` · ref ${o.paymentRef}` : ""}
               </p>
               {o.hasProof && (

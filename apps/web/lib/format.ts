@@ -55,6 +55,8 @@ export const paymentMethodLabel = {
 
 /** How a pay-at-pickup order was paid at the counter. */
 export const paidWithLabel = { CASH: "Cash", POS: "POS (card)", TRANSFER: "Bank transfer" } as const;
+/** The same, mid-sentence: "paid by POS (card)". */
+export const paidWithPhrase = { CASH: "cash", POS: "POS (card)", TRANSFER: "bank transfer" } as const;
 
 export const idTypeLabel: Record<string, string> = {
   NIN: "National ID (NIN slip or card)",

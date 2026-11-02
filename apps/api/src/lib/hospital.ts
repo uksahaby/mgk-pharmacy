@@ -150,8 +150,15 @@ export function serializePickable(p: ProductWithBatches) {
   };
 }
 
+/** How many active ingredients: 2 for "Artemether/lumefantrine 80/480 mg" or "Paracetamol + Caffeine". */
+function ingredientCount(name: string) {
+  const ingredients = name.split(/\d/)[0];
+  return ingredients.split(/\s*[+/]\s*|\s+and\s+/i).filter((s) => s.trim()).length;
+}
+
 /**
- * Products that probably match a prescribed medicine: same ingredient, in stock first, then matching strength.
+ * Products that probably match a prescribed medicine: same ingredient, in stock first, then matching strength, then
+ * the same mix of ingredients (so plain paracetamol comes before paracetamol with caffeine).
  * `strengthMatch` says whether the product's strength appears in the prescription, e.g. "500mg" for "Amoxicillin 500 mg capsule".
  */
 export async function suggestProducts(medicine: string) {
@@ -163,15 +170,24 @@ export async function suggestProducts(medicine: string) {
       OR: [{ genericName: { contains: keyword, mode: "insensitive" } }, { name: { contains: keyword, mode: "insensitive" } }],
     },
     include: { batches: { where: { status: "ACTIVE" } } },
-    take: 20,
+    orderBy: { name: "asc" },
+    take: 150,
   });
   const numbers = new Set(medicine.match(/\d+(\.\d+)?/g) ?? []);
   const strengthMatches = (p: Product) => {
     const own = p.strength?.match(/\d+(\.\d+)?/g) ?? [];
     return own.length > 0 && own.every((n) => numbers.has(n));
   };
+  const mix = ingredientCount(medicine);
   return products
-    .map((p) => ({ ...serializePickable(p), strengthMatch: strengthMatches(p) }))
-    .sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0) || Number(b.strengthMatch) - Number(a.strengthMatch) || a.name.localeCompare(b.name))
-    .slice(0, 5);
+    .map((p) => ({ ...serializePickable(p), strengthMatch: strengthMatches(p), sameMix: ingredientCount(p.genericName) === mix }))
+    .sort(
+      (a, b) =>
+        Number(b.stock > 0) - Number(a.stock > 0) ||
+        Number(b.strengthMatch) - Number(a.strengthMatch) ||
+        Number(b.sameMix) - Number(a.sameMix) ||
+        a.name.localeCompare(b.name),
+    )
+    .slice(0, 5)
+    .map(({ sameMix: _sameMix, ...p }) => p);
 }

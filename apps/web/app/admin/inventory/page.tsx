@@ -16,9 +16,15 @@ export default async function InventoryPage() {
   const data = (await apiGet<Inventory>("/admin/inventory"))!;
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Inventory</h1>
-        <p className="text-sm text-ink-muted">Reorder low stock and act on expiring batches before they become waste.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Inventory</h1>
+          <p className="text-sm text-ink-muted">Reorder low stock and act on expiring batches before they become waste.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <a href="/api/admin/inventory/export" download className="btn-outline btn-sm">Download stock list for Excel</a>
+          <a href="/api/admin/inventory/export?view=batches" download className="btn-outline btn-sm">Download batches for Excel</a>
+        </div>
       </div>
       {data.neverStocked > 0 && (
         <Link href="/admin/products?stock=never" className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-sm hover:border-slate-300">

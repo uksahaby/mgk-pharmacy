@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { ah, badRequest, forbidden, HttpError, notFound } from "../lib/errors";
 import { hasEverStocked, isLowStock, LOW_STOCK_THRESHOLD, serializeProduct, stockOf } from "../lib/catalog";
+import { batchRows, stockReportDate, stockRows, toCsv } from "../lib/stock-report";
 import { addEvent, cancelOrder, markOrderPaid, newDeliveryCode, notifyOrder, orderInclude, serializeOrder } from "../lib/orders";
 import { sendPrivateFile } from "../lib/uploads";
 import { sendMail } from "../lib/mailer";
@@ -27,7 +28,7 @@ const ACCESS_RULES: [RegExp, Permission | { read: Permission; write: Permission 
   [/^\/hospital-prescriptions(\/|$)/, "prescriptions.review"],
   [/^\/verifications(\/|$)/, "verifications.review"],
   [/^\/(products|batches)(\/|$)/, "products.manage"],
-  [/^\/inventory$/, "inventory.manage"],
+  [/^\/inventory(\/export)?$/, "inventory.manage"],
   [/^\/customers$/, "customers.view"],
   [/^\/messages(\/|$)/, "messages.view"],
   [/^\/(users|audit|roles)(\/|$)/, "staff.manage"],
@@ -514,6 +515,17 @@ adminRouter.get(
       .sort((a, b) => a.expiresAt.getTime() - b.expiresAt.getTime())
       .map((b) => ({ id: b.id, productId: b.productId, productName: b.productName, batchNumber: b.batchNumber, quantity: b.quantity, expiresAt: b.expiresAt, expired: b.expiresAt.getTime() < Date.now() }));
     res.json({ lowStock, neverStocked, threshold: LOW_STOCK_THRESHOLD, expiring });
+  }),
+);
+
+adminRouter.get(
+  "/inventory/export",
+  ah(async (req, res) => {
+    const products = await prisma.product.findMany({ include: { category: true, batches: true } });
+    const batches = req.query.view === "batches";
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="mgk-pharmacy-${batches ? "batches" : "stock"}-${stockReportDate()}.csv"`);
+    res.send(toCsv(batches ? batchRows(products) : stockRows(products)));
   }),
 );
 
