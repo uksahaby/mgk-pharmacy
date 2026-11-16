@@ -33,7 +33,7 @@ const registerSchema = z.object({
   phone,
   password,
   marketingOptIn: z.boolean().optional().default(false),
-  acceptTerms: z.literal(true, { errorMap: () => ({ message: "Please accept the terms to continue" }) }),
+  acceptTerms: z.literal(true, { error: "Please accept the terms to continue" }),
 });
 
 authRouter.post(

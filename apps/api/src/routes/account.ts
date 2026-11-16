@@ -70,7 +70,7 @@ const addressSchema = z.object({
   line1: z.string().trim().min(3, "Enter your street address").max(160),
   line2: z.string().trim().max(160).optional().nullable(),
   city: z.string().trim().min(2, "Required").max(80),
-  state: z.enum(NIGERIAN_STATES, { errorMap: () => ({ message: "Choose a state" }) }),
+  state: z.enum(NIGERIAN_STATES, { error: "Choose a state" }),
   landmark: z.string().trim().max(160).optional().nullable(),
   isDefault: z.boolean().optional(),
 });
@@ -246,7 +246,7 @@ accountRouter.post(
         type: z.enum(["PATIENT", "DOCTOR", "PHARMACIST"]),
         idType: z.enum(["NIN", "DRIVERS_LICENCE", "PASSPORT", "VOTERS_CARD"]),
         licenseNumber: z.string().trim().max(40).optional(),
-        consent: z.literal("true", { errorMap: () => ({ message: "Please confirm the declaration" }) }),
+        consent: z.literal("true", { error: "Please confirm the declaration" }),
       })
       .parse(req.body);
     if (!idDoc) throw badRequest("Please upload a photo of your government-issued ID.");

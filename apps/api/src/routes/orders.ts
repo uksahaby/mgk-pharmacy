@@ -39,7 +39,7 @@ const checkoutSchema = z
         line1: z.string().trim().min(3, "Enter your street address").max(160),
         line2: z.string().trim().max(160).optional().or(z.literal("")),
         city: z.string().trim().min(2, "Enter your town or city").max(80),
-        state: z.enum(NIGERIAN_STATES, { errorMap: () => ({ message: "Choose a state" }) }),
+        state: z.enum(NIGERIAN_STATES, { error: "Choose a state" }),
         landmark: z.string().trim().max(160).optional().or(z.literal("")),
         // Optional pin dropped by the customer on the checkout map.
         lat: z.number().min(4).max(14.1).optional(),
